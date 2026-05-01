@@ -2,7 +2,7 @@ import { useAuth } from "@/lib/auth-context";
 import { requestAPI } from "@/lib/request";
 import * as Sentry from "@sentry/react-native";
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export type PhotoStatus = "idle" | "uploading_blob" | "uploading_s3" | "fetching_cdn_url" | "uploaded" | "failed";
 
@@ -29,19 +29,24 @@ export const usePhotoUpload = () => {
   const { accessToken } = useAuth();
   const [status, setStatus] = useState<PhotoStatus>("idle");
   const [cdnUrl, setCdnUrl] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const upload = useCallback(
     async (asset: ImagePicker.ImagePickerAsset): Promise<string | null> => {
       if (!accessToken) return null;
+      const myId = ++requestIdRef.current;
+      const isStale = () => requestIdRef.current !== myId;
       try {
         setStatus("uploading_blob");
 
         const { File } = await import("expo-file-system");
         const fileRef = new File(asset.uri);
         const buffer = await fileRef.arrayBuffer();
+        if (isStale()) return null;
         const filename = asset.fileName ?? `photo-${Date.now()}.jpg`;
         const byteSize = asset.fileSize ?? buffer.byteLength;
         const checksum = await md5BufferBase64(buffer);
+        if (isStale()) return null;
         const contentType = asset.mimeType ?? "image/jpeg";
 
         const blobResponse = await requestAPI<DirectUploadResponse>("mobile/direct_uploads", {
@@ -49,6 +54,7 @@ export const usePhotoUpload = () => {
           accessToken,
           data: { blob: { filename, byte_size: byteSize, checksum, content_type: contentType } },
         });
+        if (isStale()) return null;
 
         setStatus("uploading_s3");
         const s3Response = await fetch(blobResponse.direct_upload.url, {
@@ -57,17 +63,20 @@ export const usePhotoUpload = () => {
           body: buffer,
         });
         if (!s3Response.ok) throw new Error(`S3 upload failed: ${s3Response.status}`);
+        if (isStale()) return null;
 
         setStatus("fetching_cdn_url");
         const cdnResponse = await requestAPI<CdnUrlResponse>(
           `mobile/s3_utility/cdn_url_for_blob?key=${encodeURIComponent(blobResponse.key)}`,
           { method: "GET", accessToken },
         );
+        if (isStale()) return null;
 
         setCdnUrl(cdnResponse.url);
         setStatus("uploaded");
         return cdnResponse.url;
       } catch (error) {
+        if (isStale()) return null;
         Sentry.captureException(error);
         setStatus("failed");
         return null;
@@ -77,6 +86,7 @@ export const usePhotoUpload = () => {
   );
 
   const reset = useCallback(() => {
+    requestIdRef.current++;
     setStatus("idle");
     setCdnUrl(null);
   }, []);

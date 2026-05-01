@@ -4,6 +4,7 @@ import { RestoreDraftBanner } from "@/components/email-compose/restore-draft-ban
 import { RichTextBody, useRichTextBody } from "@/components/email-compose/rich-text-body";
 import type { AudienceType } from "@/components/email-compose/use-audience-options";
 import { useAudienceOptions } from "@/components/email-compose/use-audience-options";
+import type { Draft } from "@/components/email-compose/use-email-draft";
 import { useEmailDraft } from "@/components/email-compose/use-email-draft";
 import { usePhotoUpload } from "@/components/email-compose/use-photo-upload";
 import { usePublishEmail } from "@/components/email-compose/use-publish-email";
@@ -25,7 +26,7 @@ export default function EmailComposeScreen() {
   const { isCreator } = useAuth();
   const router = useRouter();
   const audienceQuery = useAudienceOptions();
-  const draftStore = useEmailDraft();
+  const { draft: storedDraft, isLoaded: draftIsLoaded, save: saveDraft, clear: clearDraft } = useEmailDraft();
   const photoUpload = usePhotoUpload();
   const publish = usePublishEmail();
 
@@ -35,35 +36,43 @@ export default function EmailComposeScreen() {
   const [photoCdnUrl, setPhotoCdnUrl] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => Crypto.randomUUID());
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const [restoreCandidate, setRestoreCandidate] = useState<Draft | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const editor = useRichTextBody({ initialHtml: "", onChange: setHtml });
 
+  const initialDraftHandled = useRef(false);
   useEffect(() => {
-    if (draftStore.isLoaded && draftStore.draft && !showRestoreBanner) {
-      setShowRestoreBanner(true);
-    }
-  }, [draftStore.isLoaded, draftStore.draft, showRestoreBanner]);
+    if (initialDraftHandled.current || !draftIsLoaded) return;
+    initialDraftHandled.current = true;
+    if (storedDraft) setRestoreCandidate(storedDraft);
+  }, [draftIsLoaded, storedDraft]);
 
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!draftStore.isLoaded) return;
+    if (!draftIsLoaded) return;
     if (!title && !html) return;
     if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     draftSaveTimer.current = setTimeout(() => {
-      draftStore.save({
-        title,
-        html,
-        audienceType,
-        idempotencyKey,
-        photoCdnUrl: photoCdnUrl ?? undefined,
-      });
+      saveDraft({ title, html, audienceType, idempotencyKey, photoCdnUrl: photoCdnUrl ?? undefined });
     }, 1000);
     return () => {
       if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     };
-  }, [draftStore, title, html, audienceType, idempotencyKey, photoCdnUrl]);
+  }, [draftIsLoaded, saveDraft, title, html, audienceType, idempotencyKey, photoCdnUrl]);
+
+  const lastPublishWasError = useRef(false);
+  useEffect(() => {
+    if (publish.isError) lastPublishWasError.current = true;
+  }, [publish.isError]);
+  useEffect(() => {
+    if (lastPublishWasError.current && (title || html)) {
+      lastPublishWasError.current = false;
+      setIdempotencyKey(Crypto.randomUUID());
+      setErrorMessage(null);
+      publish.reset();
+    }
+  }, [title, html, audienceType, publish]);
 
   const eligibility = audienceQuery.data?.eligibility;
   const options = audienceQuery.data?.options ?? [];
@@ -77,24 +86,25 @@ export default function EmailComposeScreen() {
     try {
       await publish.mutateAsync({ title, html, audienceType, photoCdnUrl, idempotencyKey });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await draftStore.clear();
+      if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+      await clearDraft();
       router.dismiss();
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setErrorMessage(error instanceof Error ? error.message : "Failed to publish");
     }
-  }, [publish, title, html, audienceType, photoCdnUrl, idempotencyKey, draftStore, router]);
+  }, [publish, title, html, audienceType, photoCdnUrl, idempotencyKey, clearDraft, router]);
 
   const handlePickPhoto = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
     const asset = result.assets?.[0];
     if (!asset) return;
     const url = await photoUpload.upload(asset);
-    if (url) setPhotoCdnUrl(url);
-  }, [photoUpload]);
+    if (url) {
+      setPhotoCdnUrl(url);
+      editor.setImage(url);
+    }
+  }, [photoUpload, editor]);
 
   const handleRemovePhoto = useCallback(() => {
     setPhotoCdnUrl(null);
@@ -102,20 +112,20 @@ export default function EmailComposeScreen() {
   }, [photoUpload]);
 
   const handleRestoreContinue = useCallback(() => {
-    const d = draftStore.draft;
-    if (!d) return;
-    setTitle(d.title);
-    setHtml(d.html);
-    setAudienceType(d.audienceType as AudienceType);
-    setIdempotencyKey(d.idempotencyKey);
-    if (d.photoCdnUrl) setPhotoCdnUrl(d.photoCdnUrl);
-    setShowRestoreBanner(false);
-  }, [draftStore.draft]);
+    if (!restoreCandidate) return;
+    setTitle(restoreCandidate.title);
+    setAudienceType(restoreCandidate.audienceType as AudienceType);
+    setIdempotencyKey(restoreCandidate.idempotencyKey);
+    if (restoreCandidate.photoCdnUrl) setPhotoCdnUrl(restoreCandidate.photoCdnUrl);
+    editor.setContent(restoreCandidate.html);
+    setHtml(restoreCandidate.html);
+    setRestoreCandidate(null);
+  }, [restoreCandidate, editor]);
 
   const handleRestoreDiscard = useCallback(async () => {
-    await draftStore.clear();
-    setShowRestoreBanner(false);
-  }, [draftStore]);
+    await clearDraft();
+    setRestoreCandidate(null);
+  }, [clearDraft]);
 
   if (!isCreator) {
     return (
@@ -153,12 +163,17 @@ export default function EmailComposeScreen() {
         </View>
       ) : null}
 
-      {showRestoreBanner && draftStore.draft ? (
-        <RestoreDraftBanner
-          draft={draftStore.draft}
-          onContinue={handleRestoreContinue}
-          onDiscard={handleRestoreDiscard}
+      {audienceQuery.isError ? (
+        <Banner
+          variant="error"
+          message="Couldn't load audience options. Pull to retry."
+          actionLabel="Retry"
+          onAction={() => audienceQuery.refetch()}
         />
+      ) : null}
+
+      {restoreCandidate ? (
+        <RestoreDraftBanner draft={restoreCandidate} onContinue={handleRestoreContinue} onDiscard={handleRestoreDiscard} />
       ) : null}
 
       {eligibility && !eligibility.can_send_emails ? (

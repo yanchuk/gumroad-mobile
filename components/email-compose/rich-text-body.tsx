@@ -1,6 +1,5 @@
 import { useCSSVariable } from "uniwind";
 import {
-  CoreBridge,
   LinkBridge,
   PlaceholderBridge,
   RichText,
