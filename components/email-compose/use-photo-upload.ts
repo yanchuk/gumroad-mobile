@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth-context";
-import { request, requestAPI } from "@/lib/request";
+import { requestAPI } from "@/lib/request";
 import * as Sentry from "@sentry/react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useState } from "react";
@@ -16,10 +16,8 @@ type DirectUploadResponse = {
 
 type CdnUrlResponse = { url: string };
 
-const md5Base64 = async (uri: string): Promise<string> => {
-  const { File } = await import("expo-file-system");
+const md5BufferBase64 = async (buffer: ArrayBuffer): Promise<string> => {
   const Crypto = await import("expo-crypto");
-  const buffer = await new File(uri).arrayBuffer();
   const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, buffer);
   const bytes = new Uint8Array(digest);
   let binary = "";
@@ -38,9 +36,12 @@ export const usePhotoUpload = () => {
       try {
         setStatus("uploading_blob");
 
+        const { File } = await import("expo-file-system");
+        const fileRef = new File(asset.uri);
+        const buffer = await fileRef.arrayBuffer();
         const filename = asset.fileName ?? `photo-${Date.now()}.jpg`;
-        const byteSize = asset.fileSize ?? 0;
-        const checksum = await md5Base64(asset.uri);
+        const byteSize = asset.fileSize ?? buffer.byteLength;
+        const checksum = await md5BufferBase64(buffer);
         const contentType = asset.mimeType ?? "image/jpeg";
 
         const blobResponse = await requestAPI<DirectUploadResponse>("mobile/direct_uploads", {
@@ -50,13 +51,12 @@ export const usePhotoUpload = () => {
         });
 
         setStatus("uploading_s3");
-        const fileBlob = await (await fetch(asset.uri)).blob();
-        await request(blobResponse.direct_upload.url, {
+        const s3Response = await fetch(blobResponse.direct_upload.url, {
           method: "PUT",
           headers: blobResponse.direct_upload.headers,
-          body: fileBlob,
-          skipResponseBody: true,
+          body: buffer,
         });
+        if (!s3Response.ok) throw new Error(`S3 upload failed: ${s3Response.status}`);
 
         setStatus("fetching_cdn_url");
         const cdnResponse = await requestAPI<CdnUrlResponse>(
