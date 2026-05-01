@@ -65,14 +65,15 @@ export default function EmailComposeScreen() {
   useEffect(() => {
     if (publish.isError) lastPublishWasError.current = true;
   }, [publish.isError]);
+  const publishReset = publish.reset;
   useEffect(() => {
     if (lastPublishWasError.current && (title || html)) {
       lastPublishWasError.current = false;
       setIdempotencyKey(Crypto.randomUUID());
       setErrorMessage(null);
-      publish.reset();
+      publishReset();
     }
-  }, [title, html, audienceType, publish]);
+  }, [title, html, audienceType, publishReset]);
 
   const eligibility = audienceQuery.data?.eligibility;
   const options = audienceQuery.data?.options ?? [];
