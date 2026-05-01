@@ -1,7 +1,7 @@
 import { LineIcon, type LineIconName } from "@/components/icon";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 
 type BannerVariant = "error" | "info" | "warning";
 
@@ -29,16 +29,30 @@ export const Banner = ({
   onAction?: () => void;
 }) => (
   <View
+    accessibilityRole={variant === "error" ? "alert" : undefined}
+    accessibilityLiveRegion={variant === "error" ? "assertive" : "polite"}
     className={cn("mx-4 my-2 flex-row items-start gap-3 rounded border p-3", variantClasses[variant])}
-    style={{ borderCurve: "continuous" }}
+    style={Platform.select({ ios: { borderCurve: "continuous" }, default: undefined })}
   >
-    <LineIcon name={variantIcons[variant]} size={18} className="text-foreground" />
+    <LineIcon
+      name={variantIcons[variant]}
+      size={18}
+      className="text-foreground"
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+    />
     <View className="flex-1">
       <Text selectable className="text-sm">
         {message}
       </Text>
       {actionLabel && onAction ? (
-        <Pressable onPress={onAction} className="mt-2 self-start">
+        <Pressable
+          onPress={onAction}
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+          hitSlop={8}
+          className="mt-2 self-start"
+        >
           <Text className="text-sm underline">{actionLabel}</Text>
         </Pressable>
       ) : null}
