@@ -91,6 +91,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-image",
     "expo-sharing",
     [
+      "expo-image-picker",
+      {
+        photosPermission: "Gumroad needs access to your photos to attach them to emails.",
+        cameraPermission: "Gumroad needs access to your camera to take photos for emails.",
+      },
+    ],
+    [
       "expo-widgets",
       {
         widgets: [
