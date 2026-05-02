@@ -10,6 +10,9 @@ export type Draft = {
   audienceType: string;
   idempotencyKey: string;
   photoCdnUrl?: string;
+  sendEmails?: boolean;
+  shownOnProfile?: boolean;
+  allowComments?: boolean;
   savedAt: string;
 };
 

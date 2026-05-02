@@ -17,6 +17,7 @@ export type Eligibility = {
 export type AudienceOptionsResponse = {
   options: AudienceOption[];
   eligibility: Eligibility;
+  has_profile_sections: boolean;
 };
 
 export const useAudienceOptions = () =>

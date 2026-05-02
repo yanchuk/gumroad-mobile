@@ -11,6 +11,9 @@ type PublishVars = {
   audienceType: AudienceType;
   photoCdnUrl: string | null;
   idempotencyKey: string;
+  sendEmails: boolean;
+  shownOnProfile: boolean;
+  allowComments: boolean;
 };
 
 type PublishResponse = {
@@ -28,7 +31,7 @@ export const usePublishEmail = () => {
   const { accessToken } = useAuth();
 
   return useMutation<PublishResponse, Error, PublishVars>({
-    mutationFn: ({ title, html, audienceType, photoCdnUrl, idempotencyKey }) =>
+    mutationFn: ({ title, html, audienceType, photoCdnUrl, idempotencyKey, sendEmails, shownOnProfile, allowComments }) =>
       requestAPI<PublishResponse>("mobile/emails", {
         method: "POST",
         accessToken: assertDefined(accessToken),
@@ -37,9 +40,9 @@ export const usePublishEmail = () => {
             name: title,
             message: html,
             installment_type: audienceType,
-            shown_on_profile: true,
-            send_emails: true,
-            allow_comments: true,
+            shown_on_profile: shownOnProfile,
+            send_emails: sendEmails,
+            allow_comments: allowComments,
             files: photoCdnUrl ? [{ url: photoCdnUrl, position: 0, stream_only: false }] : [],
           },
           publish: true,

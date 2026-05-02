@@ -1,7 +1,8 @@
-import { AudienceSheet } from "@/components/email-compose/audience-sheet";
 import { PhotoAttachment } from "@/components/email-compose/photo-attachment";
 import { RestoreDraftBanner } from "@/components/email-compose/restore-draft-banner";
 import { RichTextBody, useRichTextBody } from "@/components/email-compose/rich-text-body";
+import type { Channel } from "@/components/email-compose/settings-sheet";
+import { SettingsSheet } from "@/components/email-compose/settings-sheet";
 import type { AudienceType } from "@/components/email-compose/use-audience-options";
 import { useAudienceOptions } from "@/components/email-compose/use-audience-options";
 import type { Draft } from "@/components/email-compose/use-email-draft";
@@ -22,6 +23,16 @@ import { Stack, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
 
+const STALE_DRAFT_MS = 60 * 60 * 1000;
+
+const channelSummary = (audienceType: AudienceType, channel: Channel) => {
+  const profileVisible = audienceType === "audience" && channel.profile;
+  if (channel.email && profileVisible) return "Email + Post";
+  if (channel.email) return "Email";
+  if (profileVisible) return "Post";
+  return "—";
+};
+
 export default function EmailComposeScreen() {
   const { isCreator } = useAuth();
   const router = useRouter();
@@ -31,7 +42,9 @@ export default function EmailComposeScreen() {
   const publish = usePublishEmail();
 
   const [title, setTitle] = useState("");
-  const [audienceType, setAudienceType] = useState<AudienceType>("audience");
+  const [audienceType, setAudienceTypeState] = useState<AudienceType>("audience");
+  const [channel, setChannel] = useState<Channel>({ email: true, profile: true });
+  const [allowComments, setAllowComments] = useState(true);
   const [html, setHtml] = useState("");
   const [photoCdnUrl, setPhotoCdnUrl] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => Crypto.randomUUID());
@@ -40,6 +53,15 @@ export default function EmailComposeScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const editor = useRichTextBody({ initialHtml: "", onChange: setHtml });
+
+  const setAudienceType = useCallback((next: AudienceType) => {
+    setAudienceTypeState((prev) => {
+      if (next === "audience" && prev !== "audience") {
+        setChannel((current) => ({ ...current, profile: true }));
+      }
+      return next;
+    });
+  }, []);
 
   const initialDraftHandled = useRef(false);
   useEffect(() => {
@@ -54,12 +76,21 @@ export default function EmailComposeScreen() {
     if (!title && !html) return;
     if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     draftSaveTimer.current = setTimeout(() => {
-      saveDraft({ title, html, audienceType, idempotencyKey, photoCdnUrl: photoCdnUrl ?? undefined });
+      saveDraft({
+        title,
+        html,
+        audienceType,
+        idempotencyKey,
+        photoCdnUrl: photoCdnUrl ?? undefined,
+        sendEmails: channel.email,
+        shownOnProfile: channel.profile,
+        allowComments,
+      });
     }, 1000);
     return () => {
       if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     };
-  }, [draftIsLoaded, saveDraft, title, html, audienceType, idempotencyKey, photoCdnUrl]);
+  }, [draftIsLoaded, saveDraft, title, html, audienceType, idempotencyKey, photoCdnUrl, channel.email, channel.profile, allowComments]);
 
   const lastPublishWasError = useRef(false);
   useEffect(() => {
@@ -77,9 +108,15 @@ export default function EmailComposeScreen() {
 
   const eligibility = audienceQuery.data?.eligibility;
   const options = audienceQuery.data?.options ?? [];
+  const hasProfileSections = audienceQuery.data?.has_profile_sections ?? false;
   const selectedOption = useMemo(() => options.find((o) => o.type === audienceType), [options, audienceType]);
 
-  const canPublish = !!eligibility?.can_send_emails && title.trim().length > 0 && html.trim().length > 0 && !publish.isPending;
+  const audienceLabel = selectedOption?.label ?? "Everyone";
+  const summary = `${audienceLabel} · ${channelSummary(audienceType, channel)} · Comments: ${allowComments ? "ON" : "OFF"}`;
+
+  const effectiveProfile = audienceType === "audience" && channel.profile;
+  const hasChannel = channel.email || effectiveProfile;
+  const canPublish = !!eligibility?.can_send_emails && title.trim().length > 0 && html.trim().length > 0 && hasChannel && !publish.isPending;
 
   const handleCancelPress = useCallback(() => {
     if (!title.trim() && !html.trim() && !photoCdnUrl) {
@@ -95,7 +132,16 @@ export default function EmailComposeScreen() {
           text: "Save as draft",
           onPress: () => {
             if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
-            saveDraft({ title, html, audienceType, idempotencyKey, photoCdnUrl: photoCdnUrl ?? undefined });
+            saveDraft({
+              title,
+              html,
+              audienceType,
+              idempotencyKey,
+              photoCdnUrl: photoCdnUrl ?? undefined,
+              sendEmails: channel.email,
+              shownOnProfile: channel.profile,
+              allowComments,
+            });
             router.dismiss();
           },
         },
@@ -110,13 +156,22 @@ export default function EmailComposeScreen() {
         },
       ],
     );
-  }, [title, html, photoCdnUrl, audienceType, idempotencyKey, saveDraft, clearDraft, router]);
+  }, [title, html, photoCdnUrl, audienceType, idempotencyKey, channel.email, channel.profile, allowComments, saveDraft, clearDraft, router]);
 
   const handlePublish = useCallback(async () => {
     setErrorMessage(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await publish.mutateAsync({ title, html, audienceType, photoCdnUrl, idempotencyKey });
+      await publish.mutateAsync({
+        title,
+        html,
+        audienceType,
+        photoCdnUrl,
+        idempotencyKey,
+        sendEmails: channel.email,
+        shownOnProfile: effectiveProfile,
+        allowComments,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
       await clearDraft();
@@ -125,7 +180,7 @@ export default function EmailComposeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setErrorMessage(error instanceof Error ? error.message : "Failed to publish");
     }
-  }, [publish, title, html, audienceType, photoCdnUrl, idempotencyKey, clearDraft, router]);
+  }, [publish, title, html, audienceType, photoCdnUrl, idempotencyKey, channel.email, effectiveProfile, allowComments, clearDraft, router]);
 
   const handlePickPhoto = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -152,9 +207,19 @@ export default function EmailComposeScreen() {
   const handleRestoreContinue = useCallback(() => {
     if (!restoreCandidate) return;
     setTitle(restoreCandidate.title);
-    setAudienceType(restoreCandidate.audienceType as AudienceType);
-    setIdempotencyKey(restoreCandidate.idempotencyKey);
+    setAudienceTypeState(restoreCandidate.audienceType as AudienceType);
+    const age = Date.now() - new Date(restoreCandidate.savedAt).getTime();
+    if (age > STALE_DRAFT_MS) {
+      setIdempotencyKey(Crypto.randomUUID());
+    } else {
+      setIdempotencyKey(restoreCandidate.idempotencyKey);
+    }
     if (restoreCandidate.photoCdnUrl) setPhotoCdnUrl(restoreCandidate.photoCdnUrl);
+    setChannel({
+      email: restoreCandidate.sendEmails ?? true,
+      profile: restoreCandidate.shownOnProfile ?? true,
+    });
+    setAllowComments(restoreCandidate.allowComments ?? true);
     editor.setContent(restoreCandidate.html);
     setHtml(restoreCandidate.html);
     setRestoreCandidate(null);
@@ -195,6 +260,7 @@ export default function EmailComposeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Publish email"
               accessibilityState={{ disabled: !canPublish }}
+              testID="email-publish-button"
               hitSlop={8}
             >
               <Text className={canPublish ? "text-base font-semibold text-accent" : "text-base font-semibold text-muted-foreground"}>
@@ -237,6 +303,7 @@ export default function EmailComposeScreen() {
           placeholder="Title"
           placeholderTextColor="#999"
           accessibilityLabel="Email title"
+          testID="email-subject-input"
           className="border-b border-border py-3 text-lg text-foreground"
         />
       </View>
@@ -244,12 +311,13 @@ export default function EmailComposeScreen() {
       <Pressable
         onPress={() => setSheetOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={`Audience: ${selectedOption?.label ?? audienceType}`}
+        accessibilityLabel={`Settings: ${summary}`}
+        testID="email-settings-chip"
         className="mx-4 my-2 flex-row items-center justify-between rounded border border-border bg-card px-4 py-3"
       >
-        <View>
-          <Text className="text-xs text-muted-foreground">Audience</Text>
-          <Text className="text-base font-medium">{selectedOption?.label ?? "Everyone"}</Text>
+        <View className="flex-1">
+          <Text className="text-xs text-muted-foreground">Settings</Text>
+          <Text className="text-base font-medium" numberOfLines={1}>{summary}</Text>
         </View>
         <LineIcon name="chevron-right" size={20} className="text-muted-foreground" />
       </Pressable>
@@ -265,12 +333,17 @@ export default function EmailComposeScreen() {
 
       <RichTextBody editor={editor} />
 
-      <AudienceSheet
+      <SettingsSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         options={options}
-        selectedType={audienceType}
-        onSelect={setAudienceType}
+        audienceType={audienceType}
+        onSelectAudience={setAudienceType}
+        hasProfileSections={hasProfileSections}
+        channel={channel}
+        onChangeChannel={setChannel}
+        allowComments={allowComments}
+        onChangeAllowComments={setAllowComments}
       />
     </Screen>
   );
