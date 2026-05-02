@@ -143,7 +143,7 @@ Wave 8 absorbs everything else — see [`2026-05-02-wave-8-email-inbox.md`](./20
 - **`PaginatedInstallmentsPresenter`** at `app/presenters/paginated_installments_presenter.rb:4,6,18-49` — shape `{ installments, pagination: { count, next }, has_posts }`. PER_PAGE=25 (line 6). Pre-existing typo `pagiation_metadata` (line 24/41) — don't rely on the variable name in any new code.
 - **`InstallmentPresenter#props`** at `installment_presenter.rb:17-78` returns row fields incl. `name`, `published_at`, `external_id`, `sent_count`, `click_count`, `open_count`, `view_count`, `click_rate`, `open_rate`, `send_emails`, `shown_on_profile`, `installment_type`, `display_type`, `full_url`, `has_been_blasted`, `shown_in_profile_sections`. **No backend presenter changes needed for list/detail fields.**
 - **`Api::Mobile::EmailsController`** at `emails_controller.rb:3-11` — only `audience_options` + `create`. Route at `config/routes.rb:253` is `only: [:create]`. Must add `:index` to `only:` list.
-- **Pundit gate:** existing `create` uses `authorize Installment, :create?` (line 46-49). For `index`, an **`index?` policy method must be added to `InstallmentPolicy`** (does not exist today) — sonnet flagged this; it's simpler to use `authorize_creator!` (a higher-level helper) instead and skip the Pundit-resource policy entirely. **Decision:** use `authorize_creator!` like the planned Sprint 1 backend pattern.
+- **Pundit gate:** existing `create` uses `authorize Installment, :create?` (line 46-49). **CODEX CORRECTION:** `InstallmentPolicy#index?` already exists at `app/policies/installment_policy.rb:5-11`. Desktop list controller uses `authorize Installment, :index?` at `app/controllers/emails_controller.rb:18-19,54-55`. **Decision:** use `authorize Installment, :index?` to match desktop and allow the same role set (admin/marketing/accountant/support per the policy file). Do NOT use `authorize_creator!` — it maps to `:create?` (admin/marketing only) and is stricter than what the desktop list allows.
 - **Tab pattern:** `app/(tabs)/_layout.tsx:216-244` — `<Tabs.Screen name="..." options={{ title, tabBarIcon, href, headerLeft, headerRight }} />`. `href: isCreator ? undefined : null` is the creator-gate idiom. **New tab order:** Dashboard → **Emails** → Analytics → Library. Emails is creator-only (same `isCreator` gate as Dashboard/Analytics).
 - **`DashboardFAB` removal:** `app/(tabs)/dashboard.tsx:153` renders `<DashboardFAB />` as the last child of `<Screen>`. Drop that line + import on line 2. Component file stays for now (referenced in Wave 8 plan if we re-introduce a contextual FAB elsewhere).
 - **Top-right "+" on Emails tab:** use `headerRight: () => <Pressable onPress={() => router.push("/email-compose")}>...</Pressable>` JSX in `Tabs.Screen options` — same pattern as `DashboardHeaderRight` at `_layout.tsx:172-177`.
@@ -191,19 +191,38 @@ Wave 8 absorbs everything else — see [`2026-05-02-wave-8-email-inbox.md`](./20
 - **3-step upload flow** (verified): step 1 POST `mobile/direct_uploads` with `{ blob: { filename, byte_size, checksum, content_type } }`; step 2 PUT to S3 presigned URL; step 3 GET `mobile/s3_utility/cdn_url_for_blob?key=...`. Backend `direct_uploads_controller.rb:23-24` permits any `content_type` — no MIME whitelist server-side.
 - **Route group:** `app/(compose)/_layout.tsx` does **NOT exist** today. Must be created. Move `email-compose` from root `Stack` into a new `(compose)` group; add `email-attachments.tsx` as a sibling. The group's `_layout.tsx` defines its own nested `Stack` and a Context provider scoping composer state.
 - **Composer presentation:** `app/_layout.tsx:76` uses `presentation: "modal"` (NOT `"fullScreenModal"` — earlier draft of plan said `"fullScreenModal"`; correction). Modals are themselves a navigation stack, so a screen pushed from `email-compose` works.
-- **`UploadedFile` type** (proposed):
+- **`UploadedFile` type** (proposed) — **CODEX BLOCKER FIX**: publish source is `cdnUrl`, NOT `signedId`. Backend `SaveInstallmentService` at `app/services/save_installment_service.rb:60,151-152` reads `installment.files[].url` and ignores `signed_id`. Existing single-photo publish already sends `files: [{ url: photoCdnUrl, ... }]` (`use-publish-email.ts:46`). Same shape continues for the multi-attachment array.
   ```ts
   type UploadedFile = {
     localUri: string;       // for retry on failure
     filename: string;
     byteSize: number;
     mimeType: string;
-    signedId: string;       // ActiveStorage attach key for publish
-    cdnUrl: string;         // for draft persistence + inline preview
+    cdnUrl: string;         // PRIMARY publish source (sent in files: [{ url }]) + draft persistence + inline preview
+    signedId?: string;      // metadata only (no backend code path consumes it today)
     position: number;       // append order
   };
   ```
-- **Draft schema migration:** today's `Draft.photoCdnUrl?: string` becomes `Draft.attachments?: UploadedFile[]`. Same `email-compose-draft-v1` AsyncStorage key — additive optional field, drop the old `photoCdnUrl` field on read (leave behind a `// migrated from photoCdnUrl in Wave 7 Sprint 2` one-liner or just ignore).
+- **Draft schema migration:** today's `Draft.photoCdnUrl?: string` becomes `Draft.attachments?: UploadedFile[]`. Same `email-compose-draft-v1` AsyncStorage key — additive optional field. **Backwards-compat read path:** when restoring an old draft, if `photoCdnUrl` is set and `attachments` is undefined, synthesize a single-element `attachments: [{ cdnUrl: photoCdnUrl, filename: "photo", byteSize: 0, mimeType: "image/jpeg", localUri: "", position: 0 }]` and drop `photoCdnUrl`. Old drafts keep working.
+
+- **CODEX BLOCKER #2 — backend MIME validation:** `app/controllers/api/mobile/direct_uploads_controller.rb:23-24` permits any `content_type`. Sprint 2 locks "PDFs + images" client-side, but a tampered client could direct-upload anything. **Add backend allowlist** at `direct_uploads_controller.rb` blob_args validation: reject if `content_type` is not in `["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"]`. Return 422 with `{ message: "File type not supported" }`. Add request spec covering allow + reject cases. (Trade-off: this also tightens existing inline image upload to the same allowlist — acceptable since inline images already only accept these MIME types via `expo-image-picker`.)
+
+### Sprint 2 — locked build order (per codex review)
+
+Codex flagged that the existing build order risks shipping a half-wired demo where Publish appears to work but attachments are missing. Sequence:
+
+1. **Backend index + route + Pundit + spec** (S2.1 backend) — adds `Api::Mobile::EmailsController#index`, route `only: [:create, :index]`, `authorize Installment, :index?`, request spec covering happy path + creator scoping + `authorize_creator!` rejection cases. **No mobile work yet — verify with curl first.**
+2. **Backend MIME allowlist** (S2.6 BLOCKER #2) — add allowlist + spec to `direct_uploads_controller.rb`. Critical to land in step 2 because S2.6 client work assumes the server enforces.
+3. **Mobile `useEmailsList` + Emails tab** (S2.1 mobile) — new tab, new hook, vanilla `FlatList`, RefreshControl. Stub data acceptable on first pass.
+4. **`usePublishEmail.onSuccess` invalidation** (S2.5) — additive, ~3 lines. Prove publish → list refresh round-trip end-to-end.
+5. **Email detail sheet + stats rows** (S2.2) — uses presenter fields already exposed.
+6. **System-browser View post** (S2.3) — `safeOpenURL(installment.full_url)`.
+7. **`expo-document-picker` install + `use-file-upload.ts` rename** (S2.6 prep) — install dep, generalize hook input shape, all existing photo-upload sites continue working with new generic input type.
+8. **Compose route group + attachments screen** (S2.6 main) — create `app/(compose)/_layout.tsx` with Context provider, move `email-compose` into group, add `email-attachments.tsx`. Wire chip on compose screen.
+9. **TenTap toolbar 📷 + drop external "Add photo"** (S2.6 wrap-up) — last step, lowest risk; existing inline path still works after the toolbar button is wired.
+10. **Maestro flow regression** — extend existing `email-compose-publish.yaml` to navigate to Emails tab post-publish + assert row visible. Closes the demo loop.
+
+**Demo-readiness guard (codex):** if S2.6 is half-wired at demo time, **skip attachments from the demo script**. The narrow demo path (S2.1–S2.5) is fully self-contained and impressive on its own.
 
 ### Sprint 3
 - **Schedule backend:** `SaveInstallmentService` already handles `params[:to_be_published_at]` (line 31, lines 79-93 — creates `installment_rule`, enqueues `PublishScheduledPostJob`).
