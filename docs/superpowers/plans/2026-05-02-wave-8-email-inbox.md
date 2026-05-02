@@ -1,31 +1,32 @@
-# Wave 8 — Mobile Email Inbox + WebView Post Viewer
+# Wave 8 — Mobile Email Inbox: Drafts, Scheduled, In-app WebView, Edit/Duplicate/Delete
 
-**Summary.** The plan for the mobile email inbox. A native list of a creator's published, draft, and scheduled emails, with per-row stats, action sheet, WebView post viewer, and soft-delete.
+**Summary.** The follow-up plan after Wave 7. Wave 7 shipped the Published list + detail sheet + View post (system browser). Wave 8 fills in the rest: Drafts and Scheduled tabs, the in-app authed WebView upgrade for View post, edit/duplicate/delete actions, search, infinite pagination, server-side drafts, and the preview endpoint.
 
-**What it's about.** The "see what I sent" half of the mobile email feature. A new Emails tab with three sub-tabs (Published, Drafts, Scheduled), each backed by a single paginated Rails endpoint filtered by type. Tapping a row opens a bottom sheet with stats and actions: View post (in-app WebView), Duplicate (pre-fills the compose screen), Delete (soft-delete with confirmation). The WebView reuses the existing `BaseWebView` component. The doc covers the web reference files mirrored, the architecture decision to collapse three controller actions into one, and the full list of backend and mobile changes.
+**What it's about.** Two sub-tabs (Drafts, Scheduled) added next to the existing Published tab. An in-app authed WebView replaces the system-browser fallback for "View post." A bottom-sheet action row gains Edit, Duplicate, and Delete. New endpoints land on the Rails side (`PATCH /mobile/emails/:id` for save-as-draft, `POST /mobile/emails/:id/preview`, `GET /mobile/emails/:id` for compose pre-fill, `DELETE /mobile/emails/:id` for soft-delete). The published list gains infinite pagination via `useInfiniteQuery` + scroll-end loader.
 
-**Why this exists.** The email list is the missing half of the composer loop. Without it, a creator has no way to see what they sent or verify a publish succeeded without leaving the app. This plan specs that screen in enough detail for an agent to implement it without ambiguity, and documents what's intentionally out of scope (search, pagination beyond the first page, true in-place edit, the Subscribers tab).
+**Why this exists.** Wave 7 closed the publish loop end-to-end but only on the Published surface. Drafts and Scheduled status both exist on the backend yet have no mobile presentation; the system-browser View post breaks the in-app illusion the rest of the feature established; and edit/duplicate/delete are how a creator actually maintains a post-history over time. This plan specs each piece in enough detail for an agent to implement it without ambiguity and documents what's intentionally out of scope (true in-place edit beyond pre-fill, the Subscribers tab).
 
 **What shaped it.**
+- Wave 7 shipped scope (Emails tab + Published list + detail sheet + View post via `safeOpenURL`) — Wave 8 builds on top, doesn't re-do.
 - Web reference: `Published.tsx`, `Drafts.tsx`, `Scheduled.tsx`, `Layout.tsx`, and `EmailSheetActions` in the Rails Inertia frontend — verified file:line before speccing the mobile equivalent.
-- `InstallmentPresenter#props` shape: `sent_count`, `open_count`/`open_rate`, `click_count`/`click_rate`, `view_count`. Mobile list rows mirror this.
-- The decision to collapse web's three controller actions into one mobile endpoint with a `type=` filter parameter.
-- Comments are already inline on `/p/<slug>` via `PostPresenter`, so the WebView path doesn't need extra work for "comment from mobile."
-- Explicit deferrals: search, pagination, true in-place edit (Edit navigates to compose pre-filled, same as Duplicate), and the Subscribers tab.
+- `InstallmentPresenter#props` shape mirrors what Wave 7's index already returns; Wave 8 reuses the same row presenter for Drafts and Scheduled.
+- The decision to collapse web's three controller actions into one mobile endpoint with a `type=` filter — already implemented in Wave 7's index, Wave 8 just adds the `drafts` and `scheduled` types to the existing handler.
+- Comments already render inline on `/p/<slug>` via `PostPresenter`, so the WebView path doesn't need extra work for "comment from mobile."
+- Explicit deferrals: true in-place edit (Edit pre-fills compose, same as Duplicate), and the Subscribers tab.
 
 ---
 
-> **Continues:** [`2026-05-02-wave-7-compose-parity.md`](./2026-05-02-wave-7-compose-parity.md) (composer parity).
+> **Continues:** [`2026-05-02-wave-7-compose-parity.md`](./2026-05-02-wave-7-compose-parity.md) (Wave 7 — already shipped: Emails tab, Published list, detail sheet, system-browser View post).
 >
-> **Depends on:** Wave 7's `update` and `preview` endpoints, plus the new attachments and channel state already on each installment.
+> **Adds (not depends on):** the `update` (PATCH), `show` (GET single), `destroy` (DELETE), and `preview` endpoints. Wave 7 only shipped `index` and `create`.
 >
 > **For agentic workers:** Use `superpowers:executing-plans` to drive this task-by-task.
 
 ## Goal
 
-Build the mobile equivalent of `gumroad.dev/emails` — a list of the seller's emails grouped by status (Published / Drafts / Scheduled), with per-row stats sheet, View post in WebView, edit/delete/duplicate actions. This is the "see what I sent" half of the parity story; Wave 7 was the "compose" half.
+Round out the mobile equivalent of `gumroad.dev/emails` on top of what Wave 7 already shipped. Wave 7 has the Emails tab, the Published sub-tab, the detail sheet, and a system-browser "View post." Wave 8 adds the remaining two sub-tabs (Drafts, Scheduled), upgrades View post to an in-app authed WebView, and ships the edit/duplicate/delete actions in the row sheet. The published list also gains infinite pagination so a creator with hundreds of posts can scroll past the first 25.
 
-The WebView post viewer (Task #27 from the original Wave 8 stub) is folded in here — when the user taps **View post** on a list row, we open `installment.full_url` in a `react-native-webview` so they can read + comment without leaving the app.
+The WebView post viewer (Task #27 from the original Wave 8 stub) is folded in here — when the user taps **View post** on a list row, we open `installment.full_url` in a `react-native-webview` so they can read + comment without leaving the app. This replaces Wave 7's `safeOpenURL` fallback.
 
 ## Out of scope
 
@@ -68,9 +69,13 @@ Returns `PaginatedInstallmentsPresenter#props` shape minus the search branch (we
 
 ## Backend changes required
 
-1. **`Api::Mobile::EmailsController`** — extend with:
-   - `index` (GET `/mobile/emails`) — accepts `type` (`published`/`drafts`/`scheduled`), `page`. Returns paginated installments via `PaginatedInstallmentsPresenter` with `query: nil` (skip ES).
+> Wave 7 already shipped `create` + `index` (Published only). Wave 8 extends the same controller.
+
+1. **`Api::Mobile::EmailsController`** — add:
+   - **Extend `index`** (GET `/mobile/emails`) to accept `type=drafts` and `type=scheduled` in addition to the Wave 7 `type=published` default.
    - `show` (GET `/mobile/emails/:id`) — returns single `InstallmentPresenter#props` for compose pre-fill (Duplicate + Edit).
+   - `update` (PATCH `/mobile/emails/:id`) — server-side Save-as-draft. Body matches `create`. Returns the updated installment.
+   - `preview` (POST `/mobile/emails/:id/preview`) — wraps `installment.send_preview_email`.
    - `destroy` (DELETE `/mobile/emails/:id`) — soft-delete via `update(deleted_at: ...)`.
 
 2. **Routes** — extend `resources :emails`:
@@ -85,19 +90,18 @@ Returns `PaginatedInstallmentsPresenter#props` shape minus the search branch (we
 
 ## Mobile changes required
 
-### New tab + screen
+### Tab + screen (mostly extending what shipped)
 
-- **`app/(tabs)/_layout.tsx`** — add new tab "Emails" between Dashboard and Library. Total tabs: Dashboard / Analytics / **Emails** / Library.
-  - Wave 6 delivered Dashboard FAB → email compose. Keep that, but ALSO offer Compose from this new tab via top-right header button.
+> Wave 7 already shipped the Emails tab between Dashboard and Analytics, the top-right `+` button, the `FlatList` of rows, the row component, and the detail sheet on row tap. Wave 8 extends.
 
-- **`app/(tabs)/emails.tsx`** — new screen with:
-  - Top tab bar (Published / Drafts / Scheduled) — three pills, swipeable preferred but acceptable to be tap-only (faster to ship).
-  - `FlatList` of installment rows showing: Subject, Date, Stats (Emailed/Opened/Clicks/Views inline as small text).
-  - Empty state with placeholder text + Compose CTA.
-  - Pull-to-refresh.
+- **`app/(tabs)/emails.tsx`** — extend with:
+  - Top tab bar (Published / Drafts / Scheduled) — three pills above the existing list. Published is the default. Swipe between is preferred but tap-only is acceptable.
+  - `useInfiniteQuery` replaces the Wave 7 `useQuery` so the list scrolls past the first 25 rows.
+  - Pull-to-refresh (already shipped).
 
-- **`components/emails/email-row.tsx`** — single row of the list.
-- **`components/emails/email-detail-sheet.tsx`** — bottom sheet shown on row tap; header with subject + close, stats grid, actions row (View post, Duplicate, Edit, Delete).
+- **`components/emails/email-detail-sheet.tsx`** — extend the existing sheet with the actions row: Duplicate, Edit, Delete. View post upgrades from `safeOpenURL` (system browser) to a `router.push("/post-webview?url=...")` (in-app authed WebView).
+
+- **`components/emails/email-row.tsx`** — already shipped. No change.
 - **`components/emails/use-emails-list.ts`** — TanStack Query hook for the index endpoint. Keyed by type.
 - **`components/emails/use-delete-email.ts`** — mutation, optimistic removal.
 
