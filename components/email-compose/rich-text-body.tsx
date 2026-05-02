@@ -10,6 +10,9 @@ import {
 } from "@10play/tentap-editor";
 import { useEffect } from "react";
 import { KeyboardAvoidingView, Platform, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const HEADER_HEIGHT = 38;
 
 export const useRichTextBody = ({
   initialHtml,
@@ -23,7 +26,7 @@ export const useRichTextBody = ({
 
   const editor = useEditorBridge({
     initialContent: initialHtml,
-    autofocus: false,
+    autofocus: true,
     avoidIosKeyboard: true,
     bridgeExtensions: [
       ...TenTapStartKit,
@@ -48,14 +51,21 @@ export const useRichTextBody = ({
   return editor;
 };
 
-export const RichTextBody = ({ editor }: { editor: EditorBridge }) => (
-  <View className="flex-1">
-    <RichText editor={editor} />
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ position: "absolute", width: "100%", bottom: 0 }}
-    >
-      <Toolbar editor={editor} />
-    </KeyboardAvoidingView>
-  </View>
-);
+export const RichTextBody = ({ editor }: { editor: EditorBridge }) => {
+  const { top } = useSafeAreaInsets();
+  const keyboardVerticalOffset = HEADER_HEIGHT + top;
+  return (
+    <>
+      <View className="flex-1" style={{ paddingBottom: Platform.OS === "ios" ? HEADER_HEIGHT : 0 }}>
+        <RichText editor={editor} />
+      </View>
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={{ position: "absolute", width: "100%", bottom: 0 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? keyboardVerticalOffset : undefined}
+      >
+        <Toolbar editor={editor} />
+      </KeyboardAvoidingView>
+    </>
+  );
+};
