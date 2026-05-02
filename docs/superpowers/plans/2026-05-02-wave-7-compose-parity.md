@@ -794,6 +794,7 @@ These gaps are documented and accepted for the demo cut. Each has a planned reme
 - **Discarded attachments rely on server cron for cleanup** — when the user taps Discard or leaves a draft to expire, the already-uploaded ActiveStorage blobs sit unattached in S3 until Rails' `purge_unattached` job sweeps them (default ~24h). No mobile-side `DELETE /direct_uploads/:signed_id` call. **Remedy:** Wave 9 — add the endpoint + fire on Discard for proactive cleanup.
 - **Restored draft attachments may 404** — local draft TTL is 7d; server `purge_unattached` window is shorter. A draft restored after the purge window will reference dead URLs; Publish will then fail with 422 from the backend. Mobile shows the row optimistically and only learns the URL is dead at Publish time. **Remedy:** Wave 8 — server-side drafts skip the issue entirely (blobs become attached `ProductFile` records on save). Optional Wave 9 mitigation: HEAD-validate URLs on draft restore and mark dead rows ⚠ "File expired".
 - **No size cap on attachments** — picked file at any size will start uploading after the soft warn. **Remedy:** Wave 9 — add a hard cap once we have resumable uploads + connection-type gating.
+- **In-flight uploads are lost on app kill** — pending uploads aren't persisted; only completed CDN URLs land in the draft. If the app dies (memory pressure, swipe-up, crash) at 80% of a 30 MB upload, the user re-picks on resume. **Remedy:** Wave 9 — multipart S3 uploads with persistent upload state and resume negotiation, once backend supports it.
 
 ---
 
