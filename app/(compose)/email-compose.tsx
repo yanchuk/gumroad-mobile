@@ -1,3 +1,4 @@
+import { useCompose } from "@/components/email-compose/compose-context";
 import { PhotoAttachment } from "@/components/email-compose/photo-attachment";
 import { RestoreDraftBanner } from "@/components/email-compose/restore-draft-banner";
 import { RichTextBody, useRichTextBody } from "@/components/email-compose/rich-text-body";
@@ -7,7 +8,7 @@ import type { AudienceType } from "@/components/email-compose/use-audience-optio
 import { useAudienceOptions } from "@/components/email-compose/use-audience-options";
 import type { Draft } from "@/components/email-compose/use-email-draft";
 import { useEmailDraft } from "@/components/email-compose/use-email-draft";
-import { usePhotoUpload } from "@/components/email-compose/use-photo-upload";
+import { useFileUpload } from "@/components/email-compose/use-file-upload";
 import { usePublishEmail } from "@/components/email-compose/use-publish-email";
 import { LineIcon } from "@/components/icon";
 import { Banner } from "@/components/ui/banner";
@@ -38,15 +39,15 @@ export default function EmailComposeScreen() {
   const router = useRouter();
   const audienceQuery = useAudienceOptions();
   const { draft: storedDraft, isLoaded: draftIsLoaded, save: saveDraft, clear: clearDraft } = useEmailDraft();
-  const photoUpload = usePhotoUpload();
+  const photoUpload = useFileUpload();
   const publish = usePublishEmail();
+  const { attachments, setAttachments } = useCompose();
 
   const [title, setTitle] = useState("");
   const [audienceType, setAudienceTypeState] = useState<AudienceType>("audience");
   const [channel, setChannel] = useState<Channel>({ email: true, profile: true });
   const [allowComments, setAllowComments] = useState(true);
   const [html, setHtml] = useState("");
-  const [photoCdnUrl, setPhotoCdnUrl] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => Crypto.randomUUID());
   const [sheetOpen, setSheetOpen] = useState(false);
   const [restoreCandidate, setRestoreCandidate] = useState<Draft | null>(null);
@@ -73,7 +74,7 @@ export default function EmailComposeScreen() {
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!draftIsLoaded) return;
-    if (!title && !html) return;
+    if (!title && !html && attachments.length === 0) return;
     if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     draftSaveTimer.current = setTimeout(() => {
       saveDraft({
@@ -81,7 +82,7 @@ export default function EmailComposeScreen() {
         html,
         audienceType,
         idempotencyKey,
-        photoCdnUrl: photoCdnUrl ?? undefined,
+        attachments,
         sendEmails: channel.email,
         shownOnProfile: channel.profile,
         allowComments,
@@ -90,7 +91,7 @@ export default function EmailComposeScreen() {
     return () => {
       if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     };
-  }, [draftIsLoaded, saveDraft, title, html, audienceType, idempotencyKey, photoCdnUrl, channel.email, channel.profile, allowComments]);
+  }, [draftIsLoaded, saveDraft, title, html, audienceType, idempotencyKey, attachments, channel.email, channel.profile, allowComments]);
 
   const lastPublishWasError = useRef(false);
   useEffect(() => {
@@ -119,7 +120,7 @@ export default function EmailComposeScreen() {
   const canPublish = !!eligibility?.can_send_emails && title.trim().length > 0 && html.trim().length > 0 && hasChannel && !publish.isPending;
 
   const handleCancelPress = useCallback(() => {
-    if (!title.trim() && !html.trim() && !photoCdnUrl) {
+    if (!title.trim() && !html.trim() && attachments.length === 0) {
       router.dismiss();
       return;
     }
@@ -137,7 +138,7 @@ export default function EmailComposeScreen() {
               html,
               audienceType,
               idempotencyKey,
-              photoCdnUrl: photoCdnUrl ?? undefined,
+              attachments,
               sendEmails: channel.email,
               shownOnProfile: channel.profile,
               allowComments,
@@ -156,7 +157,7 @@ export default function EmailComposeScreen() {
         },
       ],
     );
-  }, [title, html, photoCdnUrl, audienceType, idempotencyKey, channel.email, channel.profile, allowComments, saveDraft, clearDraft, router]);
+  }, [title, html, attachments, audienceType, idempotencyKey, channel.email, channel.profile, allowComments, saveDraft, clearDraft, router]);
 
   const handlePublish = useCallback(async () => {
     setErrorMessage(null);
@@ -166,7 +167,7 @@ export default function EmailComposeScreen() {
         title,
         html,
         audienceType,
-        photoCdnUrl,
+        attachments,
         idempotencyKey,
         sendEmails: channel.email,
         shownOnProfile: effectiveProfile,
@@ -180,7 +181,7 @@ export default function EmailComposeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setErrorMessage(error instanceof Error ? error.message : "Failed to publish");
     }
-  }, [publish, title, html, audienceType, photoCdnUrl, idempotencyKey, channel.email, effectiveProfile, allowComments, clearDraft, router]);
+  }, [publish, title, html, audienceType, attachments, idempotencyKey, channel.email, effectiveProfile, allowComments, clearDraft, router]);
 
   const handlePickPhoto = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -191,18 +192,10 @@ export default function EmailComposeScreen() {
     });
     if (!result.assets?.length) return;
     for (const asset of result.assets) {
-      const url = await photoUpload.upload(asset);
-      if (url) {
-        setPhotoCdnUrl(url);
-        editor.setImage(url);
-      }
+      const upload = await photoUpload.upload(asset);
+      if (upload) editor.setImage(upload.cdnUrl);
     }
   }, [photoUpload, editor]);
-
-  const handleRemovePhoto = useCallback(() => {
-    setPhotoCdnUrl(null);
-    photoUpload.reset();
-  }, [photoUpload]);
 
   const handleRestoreContinue = useCallback(() => {
     if (!restoreCandidate) return;
@@ -214,7 +207,7 @@ export default function EmailComposeScreen() {
     } else {
       setIdempotencyKey(restoreCandidate.idempotencyKey);
     }
-    if (restoreCandidate.photoCdnUrl) setPhotoCdnUrl(restoreCandidate.photoCdnUrl);
+    setAttachments(restoreCandidate.attachments ?? []);
     setChannel({
       email: restoreCandidate.sendEmails ?? true,
       profile: restoreCandidate.shownOnProfile ?? true,
@@ -223,7 +216,7 @@ export default function EmailComposeScreen() {
     editor.setContent(restoreCandidate.html);
     setHtml(restoreCandidate.html);
     setRestoreCandidate(null);
-  }, [restoreCandidate, editor]);
+  }, [restoreCandidate, editor, setAttachments]);
 
   const handleRestoreDiscard = useCallback(async () => {
     await clearDraft();
@@ -317,7 +310,23 @@ export default function EmailComposeScreen() {
       >
         <View className="flex-1">
           <Text className="text-xs text-muted-foreground">Settings</Text>
-          <Text className="text-base font-medium" numberOfLines={1}>{summary}</Text>
+          <Text className="text-base" numberOfLines={1}>{summary}</Text>
+        </View>
+        <LineIcon name="chevron-right" size={20} className="text-muted-foreground" />
+      </Pressable>
+
+      <Pressable
+        onPress={() => router.push("/email-attachments")}
+        accessibilityRole="button"
+        accessibilityLabel={`Attachments: ${attachments.length} ${attachments.length === 1 ? "file" : "files"}`}
+        testID="email-attachments-chip"
+        className="mx-4 my-2 flex-row items-center justify-between rounded border border-border bg-card px-4 py-3"
+      >
+        <View className="flex-row items-center gap-3">
+          <LineIcon name="paperclip" size={20} className="text-foreground" />
+          <Text className="text-base">
+            Attachments ({attachments.length})
+          </Text>
         </View>
         <LineIcon name="chevron-right" size={20} className="text-muted-foreground" />
       </Pressable>
@@ -329,7 +338,7 @@ export default function EmailComposeScreen() {
         </Button>
       </View>
 
-      <PhotoAttachment status={photoUpload.status} onRemove={handleRemovePhoto} onRetry={handlePickPhoto} />
+      <PhotoAttachment status={photoUpload.status} onRemove={() => photoUpload.reset()} onRetry={handlePickPhoto} />
 
       <RichTextBody editor={editor} />
 

@@ -1,5 +1,4 @@
 import { useDashboardSearch } from "@/app/(tabs)/_layout";
-import { DashboardFAB } from "@/components/dashboard/dashboard-fab";
 import { SaleDetailModal } from "@/components/dashboard/sale-detail-modal";
 import { SaleItem } from "@/components/dashboard/sale-item";
 import { usePurchaseSearch } from "@/components/dashboard/use-purchase-search";
@@ -150,7 +149,6 @@ export default function Dashboard() {
       )}
 
       <SaleDetailModal saleId={selectedSaleId} onClose={() => setSelectedSaleId(null)} />
-      <DashboardFAB />
     </Screen>
   );
 }
