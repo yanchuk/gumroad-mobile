@@ -8,11 +8,23 @@ import {
   useEditorBridge,
   type EditorBridge,
 } from "@10play/tentap-editor";
-import { useEffect } from "react";
-import { KeyboardAvoidingView, Platform, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEffect, useState } from "react";
+import { Keyboard, Platform, View } from "react-native";
 
-const HEADER_HEIGHT = 38;
+const useKeyboardHeight = () => {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, (e) => setHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener(hideEvent, () => setHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+  return height;
+};
 
 export const useRichTextBody = ({
   initialHtml,
@@ -52,20 +64,15 @@ export const useRichTextBody = ({
 };
 
 export const RichTextBody = ({ editor }: { editor: EditorBridge }) => {
-  const { top } = useSafeAreaInsets();
-  const keyboardVerticalOffset = HEADER_HEIGHT + top;
+  const keyboardHeight = useKeyboardHeight();
   return (
     <>
-      <View className="flex-1" style={{ paddingBottom: Platform.OS === "ios" ? HEADER_HEIGHT : 0 }}>
+      <View className="flex-1">
         <RichText editor={editor} />
       </View>
-      <KeyboardAvoidingView
-        behavior="padding"
-        style={{ position: "absolute", width: "100%", bottom: 0 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? keyboardVerticalOffset : undefined}
-      >
-        <Toolbar editor={editor} />
-      </KeyboardAvoidingView>
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: keyboardHeight }}>
+        <Toolbar editor={editor} hidden={false} />
+      </View>
     </>
   );
 };
