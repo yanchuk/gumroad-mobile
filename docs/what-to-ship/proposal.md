@@ -4,17 +4,15 @@
 
 ## Summary
 
-The Gumroad mobile app already has both sides — buyers read their library, sellers see Dashboard sales + Analytics. What it doesn't have is a way for a seller to **create** anything from the phone. Every authoring action — post an update, write an email, add a product — still requires a laptop. So we asked: what's the smallest seller-authoring surface that closes a loop the platform already half-built?
+The mobile app already has both sides. Buyers read their library. Sellers see Dashboard and Analytics. What it doesn't have is a way for a seller to create from the phone. Every authoring action still needs a laptop.
 
-We considered three candidates and dropped two:
+The pick: **Quick Update** — a mobile email composer. Title, rich-text body, optional photo, audience picker. Publishes through Gumroad's existing email pipeline. Same engine the web composer uses.
 
-- **Apple Pay one-tap repurchase** — looked promising as a buyer-side win, but ruled out after a Codex review showed it needs a native Stripe RN dependency, a merchant entitlement, and a dense Order/Charge/Purchase service flow. Honest scope ~2 weeks, not 3 days.
-- **Audio/video transcription on mobile** — overclaim. Realistic in 3 days only as a watered-down preview, which doesn't ship the strategic story.
-- **Quick Update — mobile email composer** — picked. Title + rich-text body + optional photo, audience picker, publishes through Gumroad's existing `Installment` pipeline. Same engine the web composer rides on (Tiptap on web, the React Native build of Tiptap on mobile).
+Why this one fits a 3-day budget: the delivery loop is already built. Email and push delivery work. The iOS push handler already deep-links into the existing post viewer. The Rails model that creates the email is shipped. Only the seller's authoring surface is missing. Add it, and a creator publishes from a phone in 30 seconds. The audience's phones get a push. Buyers tap and land in the viewer. One small surface, end-to-end loop.
 
-Why this one wins on a 3-day budget: the whole delivery loop is already built. Email + push delivery, the iOS push handler that deep-links into the existing mobile post viewer, the Rails `Installment` model that creates the email — all shipped. The only missing piece is the seller's authoring surface. Add that, and a creator can publish from a phone in 30 seconds, their audience's phones get the push that's already wired up, buyers tap and land in the existing viewer. End-to-end loop, single small surface.
+A few earlier AI suggestions didn't survive review (Apple Pay one-tap, audio/video transcription) — wrong scope or thin strategic value. Cut.
 
-The strategic frame: mobile is Sahil's named #1 lever for 2026, creator activation is the named bottleneck, email is "Gumroad's highest-value distribution channel," and short-form authoring is the use case mobile is good at (long-form essays are sit-down work). Substack/Patreon/Twitter mobile own short-form authoring on their platforms; Gumroad mobile didn't — until now.
+Strategic frame: mobile is Sahil's named #1 lever for 2026. Creator activation is the named bottleneck. Email is "Gumroad's highest-value distribution channel." Short-form authoring is what mobile is good at — long-form essays are sit-down work. Substack, Patreon, and Twitter own short-form authoring on mobile. Gumroad didn't.
 
 ---
 
