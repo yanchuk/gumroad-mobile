@@ -117,8 +117,8 @@ The content below is preserved as reference for Wave 8 planning, but is OUT OF W
 #### ~~Sprint 3~~ — Schedule + Save-as-draft (~2 days) [top mobile-native use cases]
 
 JTBD covered:
-- **S3.1 Schedule** — "Write at 11pm, send at 9am." Mobile creators write at odd hours; this is *the* mobile use case.
-- **S3.2 Save as draft (server)** — "Walk into a meeting, finish later anywhere." Phone interruption is the canonical mobile failure mode.
+- **[DEFERRED to Wave 8] S3.1 Schedule** — "Write at 11pm, send at 9am." Mobile creators write at odd hours; this is *the* mobile use case.
+- **[DEFERRED to Wave 8] S3.2 Save as draft (server)** — "Walk into a meeting, finish later anywhere." Phone interruption is the canonical mobile failure mode.
 
 Visible payoff: Drafts and Scheduled tabs in the Sprint 2 list now populate.
 
@@ -137,8 +137,8 @@ Mobile: `PublishPopover` (datetime picker) + Save header button + extends list w
 
 
 JTBD covered:
-- **S4.1 Attachments via doc-picker** — "Attach a PDF or image as a download — without crowding the editor." Image + PDF only; video → TODO.
-- **S4.2 Preview** (email + post popover) — Web parity.
+- **[SHIPPED in Wave 7 Sprint 2] S4.1 Attachments via doc-picker** — "Attach a PDF or image as a download — without crowding the editor." Image + PDF only; video → TODO.
+- **[DEFERRED to Wave 8] S4.2 Preview** (email + post popover) — Web parity.
 
 Internal items folded in:
 - Pass `File` directly to S3 PUT (drops dual-read; fixes potential iOS RCTImageLoader race)

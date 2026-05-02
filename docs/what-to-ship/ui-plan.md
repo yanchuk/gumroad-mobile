@@ -1,4 +1,4 @@
-# UI plan — Quick Update
+# UI plan — Mobile Emails
 
 **Summary.** The per-screen UI spec for the mobile Emails. Component choices, string parity with the web, design tokens, and a precise reuse-versus-build inventory.
 
@@ -568,7 +568,9 @@ In v1.5 these become tappable to open a sheet with the audience picker / channel
 
 ---
 
-### M16 — Subscriber email viewer (renders the Quick Update)
+### M16 — Subscriber email viewer (push → existing post viewer)
+
+> **Note:** M16 covers the **subscriber-side** path: push notification → `app/post/[id].tsx`. The **creator-side** "View post" action that appears in the new Emails tab detail sheet is a separate flow that opens `/p/<slug>` in the system browser. Wave 8 upgrades the creator-side action to an in-app authed WebView.
 
 ```
 ┌────────────────────────────────────┐

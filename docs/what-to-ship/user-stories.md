@@ -1,4 +1,4 @@
-# Quick Update — user stories & acceptance criteria
+# Mobile Emails — user stories & acceptance criteria
 
 **Summary.** The product spec for the mobile Emails. User stories, acceptance criteria, and the request/response flow from a creator's phone to a subscriber's lock screen.
 
@@ -152,7 +152,7 @@ Legend:  🆕 = new in this PR.  Everything else already shipped.
 
 Web sets CTAs via the **`UpsellCard` Tiptap extension** inside the rich-text editor (`EmailForm.tsx:39, 1185`). The legacy `call_to_action_text` / `call_to_action_url` fields exist on the `Installment` model but are **not set by the modern web composer** (`SaveInstallmentService.installment_attrs` permits only `[:name, :message, :shown_on_profile, :allow_comments]`).
 
-Mobile v1 has plain-text body, no rich-text editor, no UpsellCard. **Adding CTA via legacy fields would diverge from web's data path.** Per the "replicate web" rule, CTA is deferred to v1.5 — to be implemented when mobile gains a rich-text editor (or a sanctioned mobile-CTA path is added to the Rails service).
+Mobile v1 ships rich-text body via `@10play/tentap-editor` (same Tiptap engine as web), but the UpsellCard extension bridge isn't available on RN. **Adding CTA via legacy `call_to_action_*` fields would diverge from web's data path.** Per the "replicate web" rule, CTA is deferred to v1.5 — to be implemented when the UpsellCard bridge ships for RN (or a sanctioned mobile-CTA path is added to the Rails service).
 
 **v1 demo flow:** title + body (plain text + auto-link) + optional photo + audience picker. No CTA. URLs in body become clickable via `auto_link` server-side.
 
@@ -178,7 +178,7 @@ Mobile v1 has plain-text body, no rich-text editor, no UpsellCard. **Adding CTA 
       "idempotency_key": "<uuid-v4>"
     }
     ```
-  - **Body format = HTML.** Server expects HTML in `message` (matches web — Tiptap emits HTML). Mobile body is plain text; at submit time it's wrapped via `toMessageHtml(plainText)`:
+  - **Body format = HTML.** Server expects HTML in `message` (matches web — Tiptap emits HTML). Mobile body is HTML emitted directly by `@10play/tentap-editor` via `editor.getHTML()`. No client-side wrap/escape needed — the editor produces server-ready HTML.
     - Split by `\n\n+` → paragraphs
     - HTML-escape each paragraph (`<` → `&lt;`, `&` → `&amp;`, etc.)
     - Single `\n` inside paragraph → `<br>`
