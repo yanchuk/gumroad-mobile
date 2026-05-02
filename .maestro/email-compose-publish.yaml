@@ -2,10 +2,11 @@ appId: ${APP_ID}
 ---
 - runFlow:
     file: utils/login-creator.yaml
+- tapOn: Emails
 - assertVisible:
-    id: dashboard-compose-fab
+    id: emails-compose-button
 - tapOn:
-    id: dashboard-compose-fab
+    id: emails-compose-button
 - assertVisible: New email
 - tapOn:
     id: email-subject-input
@@ -35,5 +36,7 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     notVisible: New email
     timeout: 15000
+# Back on the Emails tab — the published email should appear at the top of the list
 - assertVisible:
-    id: dashboard-compose-fab
+    id: emails-compose-button
+- assertVisible: Maestro test
