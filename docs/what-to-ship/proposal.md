@@ -2,6 +2,22 @@
 
 **Status:** locked after multiple Codex reviews. Ship by Mon 2026-05-04.
 
+## Summary
+
+The Gumroad mobile app today is buyer-only — read what you bought, listen to your audio, watch your video. Sellers can sign in but the app doesn't help them create. So we asked: what's the smallest creator-side surface that closes a loop the platform already half-built?
+
+We considered three candidates and dropped two:
+
+- **Apple Pay one-tap repurchase** — looked promising as a buyer-side win, but ruled out after a Codex review showed it needs a native Stripe RN dependency, a merchant entitlement, and a dense Order/Charge/Purchase service flow. Honest scope ~2 weeks, not 3 days.
+- **Audio/video transcription on mobile** — overclaim. Realistic in 3 days only as a watered-down preview, which doesn't ship the strategic story.
+- **Quick Update — mobile email composer** — picked. Title + rich-text body + optional photo, audience picker, publishes through Gumroad's existing `Installment` pipeline. Same engine the web composer rides on (Tiptap on web, the React Native build of Tiptap on mobile).
+
+Why this one wins on a 3-day budget: the whole delivery loop is already built on the buyer side. Email + push delivery, the iOS push handler that deep-links into the existing mobile post viewer, the Rails `Installment` model that creates the email — all shipped. The only missing piece is the seller's authoring surface. Add that, and a creator can publish from a phone in 30 seconds, the buyer's phone gets the push that's already wired up, the buyer taps and lands in the existing viewer. End-to-end loop, single small surface.
+
+The strategic frame: mobile is Sahil's named #1 lever for 2026, creator activation is the named bottleneck, email is "Gumroad's highest-value distribution channel," and short-form authoring is the use case mobile is good at (long-form essays are sit-down work). Substack/Patreon/Twitter mobile own short-form authoring on their platforms; Gumroad mobile didn't — until now.
+
+---
+
 ## The pick
 
 **Quick Update** — mobile authoring of email updates. Title + rich-text body (via `@10play/tentap-editor`, same Tiptap engine as web) + optional photo. No CTA, no audio/video, no scheduling.
