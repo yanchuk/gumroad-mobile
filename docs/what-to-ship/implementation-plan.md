@@ -1,4 +1,4 @@
-# Quick Update — Mobile Email Composer Implementation Plan v6
+# Quick Update — Mobile Emails Implementation Plan v6
 
 **Summary.** The engineering execution plan for the mobile Emails. Six versioned iterations of a task-by-task build plan covering both the Rails backend and the Expo/React Native client.
 

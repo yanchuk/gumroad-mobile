@@ -1,4 +1,4 @@
-# Wave 7 — Mobile Email Composer Parity with Web
+# Wave 7 — Mobile Emails Feature Parity with Web
 
 **Summary.** The sprint plan for the parity work shipping in this PR. Brings the mobile Emails to feature parity with the web composer and adds an Emails tab to the app's bottom navigation.
 

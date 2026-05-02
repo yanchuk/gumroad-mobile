@@ -1,4 +1,4 @@
-# Quick Update — Mobile Email Composer Implementation Plan
+# Quick Update — Mobile Emails Implementation Plan
 
 **Summary.** The earlier implementation plan for the mobile Emails. The version used for the first six waves of work, before being superseded by a restructured v6 plan in `docs/what-to-ship/implementation-plan.md`.
 
