@@ -20,7 +20,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, TextInput, View } from "react-native";
 
 export default function EmailComposeScreen() {
   const { isCreator } = useAuth();
@@ -80,6 +80,37 @@ export default function EmailComposeScreen() {
   const selectedOption = useMemo(() => options.find((o) => o.type === audienceType), [options, audienceType]);
 
   const canPublish = !!eligibility?.can_send_emails && title.trim().length > 0 && html.trim().length > 0 && !publish.isPending;
+
+  const handleCancelPress = useCallback(() => {
+    if (!title.trim() && !html.trim() && !photoCdnUrl) {
+      router.dismiss();
+      return;
+    }
+    Alert.alert(
+      "Cancel email?",
+      "Your draft will be saved unless you discard it.",
+      [
+        { text: "Keep editing", style: "cancel" },
+        {
+          text: "Save as draft",
+          onPress: () => {
+            if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+            saveDraft({ title, html, audienceType, idempotencyKey, photoCdnUrl: photoCdnUrl ?? undefined });
+            router.dismiss();
+          },
+        },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: async () => {
+            if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+            await clearDraft();
+            router.dismiss();
+          },
+        },
+      ],
+    );
+  }, [title, html, photoCdnUrl, audienceType, idempotencyKey, saveDraft, clearDraft, router]);
 
   const handlePublish = useCallback(async () => {
     setErrorMessage(null);
@@ -147,6 +178,16 @@ export default function EmailComposeScreen() {
       <Stack.Screen
         options={{
           title: "New email",
+          headerLeft: () => (
+            <Pressable
+              onPress={handleCancelPress}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              hitSlop={8}
+            >
+              <Text className="text-base text-accent">Cancel</Text>
+            </Pressable>
+          ),
           headerRight: () => (
             <Pressable
               onPress={handlePublish}
