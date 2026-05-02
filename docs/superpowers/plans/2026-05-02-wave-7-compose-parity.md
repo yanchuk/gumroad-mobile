@@ -205,22 +205,21 @@ Wave 8 absorbs everything else — see [`2026-05-02-wave-8-email-inbox.md`](./20
   ```
 - **Draft schema migration:** today's `Draft.photoCdnUrl?: string` becomes `Draft.attachments?: UploadedFile[]`. Same `email-compose-draft-v1` AsyncStorage key — additive optional field. **Backwards-compat read path:** when restoring an old draft, if `photoCdnUrl` is set and `attachments` is undefined, synthesize a single-element `attachments: [{ cdnUrl: photoCdnUrl, filename: "photo", byteSize: 0, mimeType: "image/jpeg", localUri: "", position: 0 }]` and drop `photoCdnUrl`. Old drafts keep working.
 
-- **CODEX BLOCKER #2 — backend MIME validation:** `app/controllers/api/mobile/direct_uploads_controller.rb:23-24` permits any `content_type`. Sprint 2 locks "PDFs + images" client-side, but a tampered client could direct-upload anything. **Add backend allowlist** at `direct_uploads_controller.rb` blob_args validation: reject if `content_type` is not in `["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"]`. Return 422 with `{ message: "File type not supported" }`. Add request spec covering allow + reject cases. (Trade-off: this also tightens existing inline image upload to the same allowlist — acceptable since inline images already only accept these MIME types via `expo-image-picker`.)
+- **Backend MIME validation — match web parity (no allowlist):** Codex flagged the open `content_type` permission at `direct_uploads_controller.rb:23-24` as a BLOCKER. **Reverted on user direction:** match web behavior — web's direct upload path also accepts any content type, so adding a mobile-only allowlist would be a divergence without a paired security fix on web. Client-side `expo-document-picker` filters to PDFs + images. If a tampered client uploads a different MIME type, that's the same risk profile web has today; track as a future cross-platform hardening task rather than a Sprint 2 blocker.
 
 ### Sprint 2 — locked build order (per codex review)
 
 Codex flagged that the existing build order risks shipping a half-wired demo where Publish appears to work but attachments are missing. Sequence:
 
 1. **Backend index + route + Pundit + spec** (S2.1 backend) — adds `Api::Mobile::EmailsController#index`, route `only: [:create, :index]`, `authorize Installment, :index?`, request spec covering happy path + creator scoping + `authorize_creator!` rejection cases. **No mobile work yet — verify with curl first.**
-2. **Backend MIME allowlist** (S2.6 BLOCKER #2) — add allowlist + spec to `direct_uploads_controller.rb`. Critical to land in step 2 because S2.6 client work assumes the server enforces.
-3. **Mobile `useEmailsList` + Emails tab** (S2.1 mobile) — new tab, new hook, vanilla `FlatList`, RefreshControl. Stub data acceptable on first pass.
-4. **`usePublishEmail.onSuccess` invalidation** (S2.5) — additive, ~3 lines. Prove publish → list refresh round-trip end-to-end.
-5. **Email detail sheet + stats rows** (S2.2) — uses presenter fields already exposed.
-6. **System-browser View post** (S2.3) — `safeOpenURL(installment.full_url)`.
-7. **`expo-document-picker` install + `use-file-upload.ts` rename** (S2.6 prep) — install dep, generalize hook input shape, all existing photo-upload sites continue working with new generic input type.
-8. **Compose route group + attachments screen** (S2.6 main) — create `app/(compose)/_layout.tsx` with Context provider, move `email-compose` into group, add `email-attachments.tsx`. Wire chip on compose screen.
-9. **TenTap toolbar 📷 + drop external "Add photo"** (S2.6 wrap-up) — last step, lowest risk; existing inline path still works after the toolbar button is wired.
-10. **Maestro flow regression** — extend existing `email-compose-publish.yaml` to navigate to Emails tab post-publish + assert row visible. Closes the demo loop.
+2. **Mobile `useEmailsList` + Emails tab** (S2.1 mobile) — new tab, new hook, vanilla `FlatList`, RefreshControl. Stub data acceptable on first pass.
+3. **`usePublishEmail.onSuccess` invalidation** (S2.5) — additive, ~3 lines. Prove publish → list refresh round-trip end-to-end.
+4. **Email detail sheet + stats rows** (S2.2) — uses presenter fields already exposed.
+5. **System-browser View post** (S2.3) — `safeOpenURL(installment.full_url)`.
+6. **`expo-document-picker` install + `use-file-upload.ts` rename** (S2.6 prep) — install dep, generalize hook input shape, all existing photo-upload sites continue working with new generic input type.
+7. **Compose route group + attachments screen** (S2.6 main) — create `app/(compose)/_layout.tsx` with Context provider, move `email-compose` into group, add `email-attachments.tsx`. Wire chip on compose screen.
+8. **TenTap toolbar 📷 + drop external "Add photo"** (S2.6 wrap-up) — last step, lowest risk; existing inline path still works after the toolbar button is wired.
+9. **Maestro flow regression** — extend existing `email-compose-publish.yaml` to navigate to Emails tab post-publish + assert row visible. Closes the demo loop.
 
 **Demo-readiness guard (codex):** if S2.6 is half-wired at demo time, **skip attachments from the demo script**. The narrow demo path (S2.1–S2.5) is fully self-contained and impressive on its own.
 
