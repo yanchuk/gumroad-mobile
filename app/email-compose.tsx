@@ -97,13 +97,19 @@ export default function EmailComposeScreen() {
   }, [publish, title, html, audienceType, photoCdnUrl, idempotencyKey, clearDraft, router]);
 
   const handlePickPhoto = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
-    const asset = result.assets?.[0];
-    if (!asset) return;
-    const url = await photoUpload.upload(asset);
-    if (url) {
-      setPhotoCdnUrl(url);
-      editor.setImage(url);
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      selectionLimit: 4,
+      quality: 0.8,
+    });
+    if (!result.assets?.length) return;
+    for (const asset of result.assets) {
+      const url = await photoUpload.upload(asset);
+      if (url) {
+        setPhotoCdnUrl(url);
+        editor.setImage(url);
+      }
     }
   }, [photoUpload, editor]);
 
