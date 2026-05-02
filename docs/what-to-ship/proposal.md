@@ -4,7 +4,7 @@
 
 ## Summary
 
-The Gumroad mobile app today is buyer-only — read what you bought, listen to your audio, watch your video. Sellers can sign in but the app doesn't help them create. So we asked: what's the smallest creator-side surface that closes a loop the platform already half-built?
+The Gumroad mobile app already has both sides — buyers read their library, sellers see Dashboard sales + Analytics. What it doesn't have is a way for a seller to **create** anything from the phone. Every authoring action — post an update, write an email, add a product — still requires a laptop. So we asked: what's the smallest seller-authoring surface that closes a loop the platform already half-built?
 
 We considered three candidates and dropped two:
 
@@ -12,7 +12,7 @@ We considered three candidates and dropped two:
 - **Audio/video transcription on mobile** — overclaim. Realistic in 3 days only as a watered-down preview, which doesn't ship the strategic story.
 - **Quick Update — mobile email composer** — picked. Title + rich-text body + optional photo, audience picker, publishes through Gumroad's existing `Installment` pipeline. Same engine the web composer rides on (Tiptap on web, the React Native build of Tiptap on mobile).
 
-Why this one wins on a 3-day budget: the whole delivery loop is already built on the buyer side. Email + push delivery, the iOS push handler that deep-links into the existing mobile post viewer, the Rails `Installment` model that creates the email — all shipped. The only missing piece is the seller's authoring surface. Add that, and a creator can publish from a phone in 30 seconds, the buyer's phone gets the push that's already wired up, the buyer taps and lands in the existing viewer. End-to-end loop, single small surface.
+Why this one wins on a 3-day budget: the whole delivery loop is already built. Email + push delivery, the iOS push handler that deep-links into the existing mobile post viewer, the Rails `Installment` model that creates the email — all shipped. The only missing piece is the seller's authoring surface. Add that, and a creator can publish from a phone in 30 seconds, their audience's phones get the push that's already wired up, buyers tap and land in the existing viewer. End-to-end loop, single small surface.
 
 The strategic frame: mobile is Sahil's named #1 lever for 2026, creator activation is the named bottleneck, email is "Gumroad's highest-value distribution channel," and short-form authoring is the use case mobile is good at (long-form essays are sit-down work). Substack/Patreon/Twitter mobile own short-form authoring on their platforms; Gumroad mobile didn't — until now.
 
