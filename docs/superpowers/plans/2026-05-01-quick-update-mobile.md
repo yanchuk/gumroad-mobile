@@ -1,6 +1,6 @@
 # Quick Update — Mobile Email Composer Implementation Plan
 
-**Summary.** The earlier implementation plan for the mobile email composer. The version used for the first six waves of work, before being superseded by a restructured v6 plan in `docs/what-to-ship/implementation-plan.md`.
+**Summary.** The earlier implementation plan for the mobile Emails. The version used for the first six waves of work, before being superseded by a restructured v6 plan in `docs/what-to-ship/implementation-plan.md`.
 
 **What it's about.** A checkpoint snapshot of the implementation plan as it existed after the first six waves. Same architecture and tech stack as the current plan, plus a dedicated audit-log section that captures the corrections discovered during those early waves: wrong URL prefixes, wrong factory names, wrong method signatures, wrong Rack::Attack wrapper, routes that already existed and didn't need adding.
 
@@ -1053,7 +1053,7 @@ Expected: app builds and launches on iOS simulator.
 git add package.json package-lock.json app.config.ts ios/ android/
 git commit -m "Install @10play/tentap-editor, expo-image-picker, async-storage
 
-Per Quick Update mobile email composer plan."
+Per Quick Update mobile Emails plan."
 ```
 
 ---
@@ -2291,7 +2291,7 @@ EOF
 # Mobile branch
 cd ~/Documents/GitHub/gumroad-mobile-quick-update
 git push -u origin feat/quick-update-mobile
-gh pr create --repo antiwork/gumroad-mobile --title "feat: Quick Update — mobile email composer" --body "..."
+gh pr create --repo antiwork/gumroad-mobile --title "feat: Quick Update — mobile Emails" --body "..."
 ```
 
 - [ ] **Step 4: Submit hiring application**

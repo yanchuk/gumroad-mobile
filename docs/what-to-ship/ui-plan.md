@@ -1,6 +1,6 @@
 # UI plan — Quick Update
 
-**Summary.** The per-screen UI spec for the mobile email composer. Component choices, string parity with the web, design tokens, and a precise reuse-versus-build inventory.
+**Summary.** The per-screen UI spec for the mobile Emails. Component choices, string parity with the web, design tokens, and a precise reuse-versus-build inventory.
 
 **What it's about.** This document specifies how the compose screen looks and behaves. String-level parity with the web composer (verified line-by-line against `EmailForm.tsx`), the hardcoded defaults mobile v1 sends in place of web's configurable fields, the design tokens already in the app, and a two-column table of reusable versus net-new components.
 
@@ -998,7 +998,7 @@ gh pr create --title "feat: mobile emails#create endpoint" --body "..."
 
 cd ~/Documents/GitHub/gumroad-mobile-quick-update
 git push -u origin feat/quick-update-mobile
-gh pr create --title "feat: Quick Update — mobile email composer" --body "..." --repo antiwork/gumroad-mobile
+gh pr create --title "feat: Quick Update — mobile Emails" --body "..." --repo antiwork/gumroad-mobile
 ```
 
 **Cleanup after PR merge:**

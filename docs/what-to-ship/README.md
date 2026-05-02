@@ -12,7 +12,7 @@ Answer: posting a short update. "Behind the scenes." "New drop." "Quick reminder
 
 ## The proposal
 
-[`proposal.md`](proposal.md) — the v4 locked one-pager: ship a mobile **email composer** (title + rich-text body + optional photo + audience picker) that publishes through Gumroad's existing `Installment` pipeline. Same engine the web composer rides on (TipTap on web, `@10play/tentap-editor` on RN — both Tiptap under the hood). Reuses the existing `ProductFile` + ActiveStorage + email-blast infra. Net new: the mobile editor + the API surface to drive it.
+[`proposal.md`](proposal.md) — the v4 locked one-pager: ship a mobile **Emails feature** (title + rich-text body + optional photo + audience picker) that publishes through Gumroad's existing `Installment` pipeline. Same engine the web composer rides on (TipTap on web, `@10play/tentap-editor` on RN — both Tiptap under the hood). Reuses the existing `ProductFile` + ActiveStorage + email-blast infra. Net new: the mobile editor + the API surface to drive it.
 
 The proposal went through three independent reviews before locking:
 
@@ -35,7 +35,7 @@ Wave 6.5 shipped the foundation (composer modal, photo upload, toolbar, Cancel c
 
 ## What's open and what's in flight
 
-**[Mobile email composer parity — iOS PR](../../../pull/2)** — Wave 7. Settings sheet (Audience + Channel + Engagement), Emails tab with detail sheet, attachments management screen, draft schema migration. Pairs with the [Rails API PR](https://github.com/yanchuk/gumroad/pull/3).
+**[Mobile Emails parity — iOS PR](../../../pull/2)** — Wave 7. Settings sheet (Audience + Channel + Engagement), Emails tab with detail sheet, attachments management screen, draft schema migration. Pairs with the [Rails API PR](https://github.com/yanchuk/gumroad/pull/3).
 
 **[Plan PR](../../../pull/1)** — this notebook + the matching wave plans, scoped here so the iOS PR's diff stays focused on code.
 

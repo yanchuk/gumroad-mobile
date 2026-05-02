@@ -1,6 +1,6 @@
 # Wave 7 — Mobile Email Composer Parity with Web
 
-**Summary.** The sprint plan for the parity work shipping in this PR. Brings the mobile email composer to feature parity with the web composer and adds an Emails tab to the app's bottom navigation.
+**Summary.** The sprint plan for the parity work shipping in this PR. Brings the mobile Emails to feature parity with the web composer and adds an Emails tab to the app's bottom navigation.
 
 **What it's about.** Two sprints. Sprint 1 stabilizes the composer and adds missing settings: channel toggles, comments toggle, all settings consolidated into one sheet, a profile-sections informational banner, and an idempotency fix for stale draft restores. Sprint 2 adds the Emails tab with a published-list screen, a per-row stats sheet, and an attachments management flow. Each sprint has explicit job-to-be-done statements, backend endpoint specs, component lists, and risk notes. Sprint 3 and 4 scope is documented but moved out to the Wave 8 plan.
 

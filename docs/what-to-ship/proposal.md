@@ -6,7 +6,7 @@
 
 The mobile app already has both sides. Buyers read their library. Sellers see Dashboard and Analytics. What it doesn't have is a way for a seller to create from the phone. Every authoring action still needs a laptop.
 
-The pick: **Quick Update** — a mobile email composer. Title, rich-text body, optional photo, audience picker. Publishes through Gumroad's existing email pipeline. Same engine the web composer uses.
+The pick: **Quick Update** — a mobile Emails feature. Title, rich-text body, optional photo, audience picker. Publishes through Gumroad's existing email pipeline. Same engine the web uses.
 
 Why this one fits a 3-day budget: the delivery loop is already built. Email and push delivery work. The iOS push handler already deep-links into the existing post viewer. The Rails model that creates the email is shipped. Only the seller's authoring surface is missing. Add it, and a creator publishes from a phone in 30 seconds. The audience's phones get a push. Buyers tap and land in the viewer. One small surface, end-to-end loop.
 

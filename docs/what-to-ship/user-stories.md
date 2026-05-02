@@ -1,6 +1,6 @@
 # Quick Update — user stories & acceptance criteria
 
-**Summary.** The product spec for the mobile email composer. User stories, acceptance criteria, and the request/response flow from a creator's phone to a subscriber's lock screen.
+**Summary.** The product spec for the mobile Emails. User stories, acceptance criteria, and the request/response flow from a creator's phone to a subscriber's lock screen.
 
 **What it's about.** Two actors. A creator opens the mobile app, taps compose, writes a title and body (optionally attaches a photo), picks an audience, taps Publish — the email goes out through Gumroad's existing pipeline. A subscriber gets the push, taps it, and lands in the existing post viewer. The doc covers v1 boundaries (no scheduling, no drafts, no CTA block) and the architecture diagram for the end-to-end loop.
 

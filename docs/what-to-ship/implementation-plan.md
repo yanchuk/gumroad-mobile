@@ -1,6 +1,6 @@
 # Quick Update — Mobile Email Composer Implementation Plan v6
 
-**Summary.** The engineering execution plan for the mobile email composer. Six versioned iterations of a task-by-task build plan covering both the Rails backend and the Expo/React Native client.
+**Summary.** The engineering execution plan for the mobile Emails. Six versioned iterations of a task-by-task build plan covering both the Rails backend and the Expo/React Native client.
 
 **What it's about.** Architecture (thin Rails wrappers around `SaveInstallmentService`, Doorkeeper + Pundit auth, TenTap rich-text editor in an Expo Router modal), the full tech stack, the agent roles used to execute the plan (Orchestrator, Developer, Verifier, Auditor), and a complete log of corrections made after each review pass. The plan spans two repos and includes a mandatory dev-client rebuild gate for native dependencies.
 
@@ -1455,7 +1455,7 @@ Expected: app builds and launches on iOS simulator.
 git add package.json package-lock.json app.config.ts ios/ android/
 git commit -m "Install @10play/tentap-editor, expo-image-picker, async-storage
 
-Per Quick Update mobile email composer plan."
+Per Quick Update mobile Emails plan."
 ```
 
 **Acceptance criteria:**
@@ -2861,7 +2861,7 @@ EOF
 # Mobile branch
 cd ~/Documents/GitHub/gumroad-mobile-quick-update
 git push -u origin feat/quick-update-mobile
-gh pr create --repo antiwork/gumroad-mobile --head yanchuk:feat/quick-update-mobile --title "feat: Quick Update — mobile email composer" --body "..."
+gh pr create --repo antiwork/gumroad-mobile --head yanchuk:feat/quick-update-mobile --title "feat: Quick Update — mobile Emails" --body "..."
 ```
 
 - [ ] **Step 4: Submit hiring application**
