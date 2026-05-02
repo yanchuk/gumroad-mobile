@@ -39,7 +39,17 @@ Wave 6.5 shipped the foundation (composer modal, photo upload, toolbar, Cancel c
 
 **[Plan PR](../../../pull/1)** — this notebook + the matching wave plans, scoped here so the iOS PR's diff stays focused on code.
 
-**Wave 8** — drafted at [`docs/superpowers/plans/2026-05-02-wave-8-email-inbox.md`](../superpowers/plans/2026-05-02-wave-8-email-inbox.md). Schedule, server-side drafts, attachments hardening, in-app authed WebView, commenting, edit/duplicate/delete, search, infinite pagination.
+### The full plan trail
+
+The composer didn't land in one go — it's a chain of waves, each driven by its own implementation plan. All three live in [`docs/superpowers/plans/`](../superpowers/plans/) so a reviewer can read the chain top-down.
+
+| Wave | Plan | What it covers | Status |
+|---|---|---|---|
+| Waves 1–6 | [`2026-05-01-quick-update-mobile.md`](../superpowers/plans/2026-05-01-quick-update-mobile.md) | Composer foundation, photo upload, TenTap toolbar, Cancel confirmation | 🟢 Shipped |
+| Wave 7 | [`2026-05-02-wave-7-compose-parity.md`](../superpowers/plans/2026-05-02-wave-7-compose-parity.md) | Settings sheet, Emails tab + list + detail sheet + View post, attachments management screen, draft schema migration | 🟢 Shipped — open in [iOS PR](../../../pull/2) |
+| Wave 8 | [`2026-05-02-wave-8-email-inbox.md`](../superpowers/plans/2026-05-02-wave-8-email-inbox.md) | Schedule, server-side drafts (PATCH), attachments hardening, in-app authed WebView, commenting, edit/duplicate/delete, search, infinite pagination | 🟠 Drafted, not started |
+
+Each plan continues from the one before it, and each one includes its own user-stories table, foundations-verified citations, and known-limitations list. Reviewers and future-me get a single read-path: notebook → proposal → user stories → implementation plan → wave plans → PRs.
 
 ## How this connects to the Rails notebook
 
