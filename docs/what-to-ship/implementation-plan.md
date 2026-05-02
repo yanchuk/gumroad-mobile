@@ -1,6 +1,8 @@
-# Quick Update — Mobile Emails Implementation Plan v6
+# Mobile Emails — Implementation Plan v6 (internal codename: Quick Update)
 
-**Summary.** The engineering execution plan for the mobile Emails. Six versioned iterations of a task-by-task build plan covering both the Rails backend and the Expo/React Native client.
+**Summary.** The engineering execution plan for the Mobile Emails feature. Six versioned iterations of a task-by-task build plan covering both the Rails backend and the Expo/React Native client.
+
+**Scope.** The foundation build through Wave 7 (composer + parity + Emails tab + attachments). Wave 8 work — schedule, server-side drafts, in-app authed WebView, edit/duplicate/delete, search, infinite pagination — lives in [`../superpowers/plans/2026-05-02-wave-8-email-inbox.md`](../superpowers/plans/2026-05-02-wave-8-email-inbox.md).
 
 **What it's about.** Architecture (thin Rails wrappers around `SaveInstallmentService`, Doorkeeper + Pundit auth, TenTap rich-text editor in an Expo Router modal), the full tech stack, the agent roles used to execute the plan (Orchestrator, Developer, Verifier, Auditor), and a complete log of corrections made after each review pass. The plan spans two repos and includes a mandatory dev-client rebuild gate for native dependencies.
 

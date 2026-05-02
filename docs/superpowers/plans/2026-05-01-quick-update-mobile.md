@@ -1,6 +1,8 @@
-# Quick Update — Mobile Emails Implementation Plan
+# Mobile Emails — Implementation Plan (Waves 1–6.5)
 
-**Summary.** The earlier implementation plan for the mobile Emails. The version used for the first six waves of work, before being superseded by a restructured v6 plan in `docs/what-to-ship/implementation-plan.md`.
+**Summary.** The earlier implementation plan for the Mobile Emails feature. The version used for the first six waves of work, before being superseded by a restructured v6 plan in `docs/what-to-ship/implementation-plan.md`.
+
+**Scope.** Waves 1–6.5 (composer foundation, photo upload, TenTap toolbar, Cancel confirmation). The phase tables below describe the *original* 3-day cut; Wave 7 (parity) and Wave 8 (inbox + WebView) live in their own plan files in this directory.
 
 **What it's about.** A checkpoint snapshot of the implementation plan as it existed after the first six waves. Same architecture and tech stack as the current plan, plus a dedicated audit-log section that captures the corrections discovered during those early waves: wrong URL prefixes, wrong factory names, wrong method signatures, wrong Rack::Attack wrapper, routes that already existed and didn't need adding.
 
