@@ -1,4 +1,4 @@
-import type { PhotoStatus } from "@/components/email-compose/use-photo-upload";
+import type { FileUploadStatus as PhotoStatus } from "@/components/email-compose/use-file-upload";
 import { LineIcon } from "@/components/icon";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Text } from "@/components/ui/text";

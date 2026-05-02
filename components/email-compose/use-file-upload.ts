@@ -1,10 +1,26 @@
 import { useAuth } from "@/lib/auth-context";
 import { requestAPI } from "@/lib/request";
 import * as Sentry from "@sentry/react-native";
-import * as ImagePicker from "expo-image-picker";
 import { useCallback, useRef, useState } from "react";
 
-export type PhotoStatus = "idle" | "uploading_blob" | "uploading_s3" | "fetching_cdn_url" | "uploaded" | "failed";
+export type FileUploadStatus = "idle" | "uploading_blob" | "uploading_s3" | "fetching_cdn_url" | "uploaded" | "failed";
+
+export type FileAsset = {
+  uri: string;
+  fileName?: string | null;
+  name?: string | null;
+  fileSize?: number | null;
+  size?: number | null;
+  mimeType?: string | null;
+};
+
+export type UploadResult = {
+  cdnUrl: string;
+  signedId: string;
+  filename: string;
+  byteSize: number;
+  mimeType: string;
+};
 
 type DirectUploadResponse = {
   signed_id: string;
@@ -25,14 +41,23 @@ const md5BytesBase64 = async (bytes: Uint8Array): Promise<string> => {
   return globalThis.btoa(binary);
 };
 
-export const usePhotoUpload = () => {
+const resolveFilename = (asset: FileAsset): string =>
+  asset.fileName ?? asset.name ?? `file-${Date.now()}`;
+
+const resolveByteSize = (asset: FileAsset, fallback: number): number =>
+  asset.fileSize ?? asset.size ?? fallback;
+
+const resolveContentType = (asset: FileAsset, fallback: string): string =>
+  asset.mimeType ?? fallback;
+
+export const useFileUpload = () => {
   const { accessToken } = useAuth();
-  const [status, setStatus] = useState<PhotoStatus>("idle");
-  const [cdnUrl, setCdnUrl] = useState<string | null>(null);
+  const [status, setStatus] = useState<FileUploadStatus>("idle");
+  const [result, setResult] = useState<UploadResult | null>(null);
   const requestIdRef = useRef(0);
 
   const upload = useCallback(
-    async (asset: ImagePicker.ImagePickerAsset): Promise<string | null> => {
+    async (asset: FileAsset): Promise<UploadResult | null> => {
       if (!accessToken) return null;
       const myId = ++requestIdRef.current;
       const isStale = () => requestIdRef.current !== myId;
@@ -45,26 +70,23 @@ export const usePhotoUpload = () => {
         if (isStale()) return null;
         const blob = await fetch(asset.uri).then((r) => r.blob());
         if (isStale()) return null;
-        const filename = asset.fileName ?? `photo-${Date.now()}.jpg`;
-        const byteSize = asset.fileSize ?? bytes.byteLength;
+
+        const filename = resolveFilename(asset);
+        const byteSize = resolveByteSize(asset, bytes.byteLength);
         const checksum = await md5BytesBase64(bytes);
         if (isStale()) return null;
-        const contentType = asset.mimeType ?? blob.type ?? "image/jpeg";
+        const contentType = resolveContentType(asset, blob.type || "application/octet-stream");
 
-        console.info("[photo] step 1: POST /mobile/direct_uploads", { filename, byteSize, contentType });
+        console.info("[upload] step 1: POST /mobile/direct_uploads", { filename, byteSize, contentType });
         const blobResponse = await requestAPI<DirectUploadResponse>("mobile/direct_uploads", {
           method: "POST",
           accessToken,
           data: { blob: { filename, byte_size: byteSize, checksum, content_type: contentType } },
         });
         if (isStale()) return null;
-        console.info("[photo] step 1 ok", { key: blobResponse.key, signed_id_present: !!blobResponse.signed_id });
 
         setStatus("uploading_s3");
-        const s3Url = blobResponse.direct_upload.url;
-        const s3Host = (() => { try { return new URL(s3Url).host; } catch { return "<invalid-url>"; } })();
-        console.info("[photo] step 2: PUT", s3Host, { headers: Object.keys(blobResponse.direct_upload.headers ?? {}) });
-        const s3Response = await fetch(s3Url, {
+        const s3Response = await fetch(blobResponse.direct_upload.url, {
           method: "PUT",
           headers: blobResponse.direct_upload.headers,
           body: blob,
@@ -73,24 +95,28 @@ export const usePhotoUpload = () => {
           const errBody = await s3Response.text().catch(() => "<no-body>");
           throw new Error(`S3 PUT ${s3Response.status}: ${errBody.slice(0, 500)}`);
         }
-        console.info("[photo] step 2 ok", s3Response.status);
         if (isStale()) return null;
 
         setStatus("fetching_cdn_url");
-        console.info("[photo] step 3: GET /mobile/s3_utility/cdn_url_for_blob", blobResponse.key);
         const cdnResponse = await requestAPI<CdnUrlResponse>(
           `mobile/s3_utility/cdn_url_for_blob?key=${encodeURIComponent(blobResponse.key)}`,
           { method: "GET", accessToken },
         );
         if (isStale()) return null;
-        console.info("[photo] step 3 ok", { url_host: (() => { try { return new URL(cdnResponse.url).host; } catch { return "<invalid>"; } })() });
 
-        setCdnUrl(cdnResponse.url);
+        const next: UploadResult = {
+          cdnUrl: cdnResponse.url,
+          signedId: blobResponse.signed_id,
+          filename,
+          byteSize,
+          mimeType: contentType,
+        };
+        setResult(next);
         setStatus("uploaded");
-        return cdnResponse.url;
+        return next;
       } catch (error) {
         if (isStale()) return null;
-        console.error("[photo] upload failed:", error instanceof Error ? error.message : error);
+        console.error("[upload] failed:", error instanceof Error ? error.message : error);
         Sentry.captureException(error);
         setStatus("failed");
         return null;
@@ -102,8 +128,8 @@ export const usePhotoUpload = () => {
   const reset = useCallback(() => {
     requestIdRef.current++;
     setStatus("idle");
-    setCdnUrl(null);
+    setResult(null);
   }, []);
 
-  return { status, cdnUrl, upload, reset };
+  return { status, result, upload, reset };
 };
