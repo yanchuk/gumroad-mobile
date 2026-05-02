@@ -1,5 +1,19 @@
 # Quick Update — Mobile Email Composer Implementation Plan
 
+**Summary.** The earlier implementation plan for the mobile email composer. The version used for the first six waves of work, before being superseded by a restructured v6 plan in `docs/what-to-ship/implementation-plan.md`.
+
+**What it's about.** A checkpoint snapshot of the implementation plan as it existed after the first six waves. Same architecture and tech stack as the current plan, plus a dedicated audit-log section that captures the corrections discovered during those early waves: wrong URL prefixes, wrong factory names, wrong method signatures, wrong Rack::Attack wrapper, routes that already existed and didn't need adding.
+
+**Why this exists.** This file is the recoverable history of what was planned, what was wrong, and what was fixed during the first half of the build. The Wave 7 and Wave 8 plans explicitly continue from it. The corrections audit log stays here so future agents don't re-introduce the same mistakes.
+
+**What shaped it.**
+- Four parallel read-only sonnet verifiers that grounded the plan against the actual repo after Wave 2 revealed codebase-plan gaps.
+- Backend corrections (B1–B14): spec require path, factory names, URL path, host header requirement, mobile token constant, user factory traits, Doorkeeper scope semantics, service method name, Rack::Attack wrapper, existing routes, nil-crash guard, payment factory, purchase factory seller alignment, presigned URL TTL risk.
+- Mobile corrections (M1–M6): icon type safety, banner background token, `expo-file-system` import path, API path leading-slash convention, FAB rendering context, TenTap New Architecture compatibility.
+- The rule that became standard practice: dispatch parallel verifiers before each new wave, don't discover codebase drift during implementation.
+
+---
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship a mobile email-update composer for `gumroad-mobile` (title + rich-text body + photo + audience picker) that publishes through Gumroad's existing `Installment` pipeline. Deadline Mon 2026-05-04 (hiring submission to Antiwork).

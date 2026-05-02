@@ -1,5 +1,19 @@
 # Quick Update — user stories & acceptance criteria
 
+**Summary.** The product spec for the mobile email composer. User stories, acceptance criteria, and the request/response flow from a creator's phone to a subscriber's lock screen.
+
+**What it's about.** Two actors. A creator opens the mobile app, taps compose, writes a title and body (optionally attaches a photo), picks an audience, taps Publish — the email goes out through Gumroad's existing pipeline. A subscriber gets the push, taps it, and lands in the existing post viewer. The doc covers v1 boundaries (no scheduling, no drafts, no CTA block) and the architecture diagram for the end-to-end loop.
+
+**Why this exists.** This is the single source of truth for what counts as shipped. It draws the explicit line between v1 (the lightweight mobile capture path) and v1.5 (audience filters, channel toggles, scheduling), so implementation doesn't drift. It also says plainly that no explicit user demand was found in research — the case is workflow-gap-based.
+
+**What shaped it.**
+- Audit of `EmailForm.tsx` to identify which fields exist and which web defaults mobile v1 hard-codes.
+- Verification that the `Installment` pipeline already handles email dispatch, push notifications, and profile-post rendering — no new infra.
+- The naming choice: "email" everywhere (per Gumroad help #169), not "post" or "update."
+- CTA/upsell block deferred — needs a TenTap extension bridge that doesn't exist on mobile yet.
+
+---
+
 **Feature:** mobile authoring of short-form **email updates** (title + rich-text body + optional photo + audience picker) that publish through Gumroad's existing `Installment` pipeline. Rich-text body uses `@10play/tentap-editor` — Tiptap-on-RN, same engine as web's `EmailForm.tsx`. CTA deferred to v1.5 (web uses Tiptap UpsellCard extension inside `message` HTML; mobile editor lacks the UpsellCard bridge in v1).
 
 **Scope honesty:** v1 is **not full web parity** — it's a lightweight mobile capture/send path for simple email updates. The web composer (`EmailForm.tsx`) has rich text, audience picker (everyone/followers/customers/affiliates + filters), channel toggles (Post to profile / email-only), scheduling, drafts, and file attachments. Mobile v1 hardcodes web's defaults for all of those. v1.5 exposes the most-asked-for fields once we have usage data. Verified public demand for mobile email composition was not found in our research pass; the case is workflow-gap-based, not demand-driven.

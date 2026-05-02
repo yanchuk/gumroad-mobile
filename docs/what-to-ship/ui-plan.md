@@ -1,5 +1,20 @@
 # UI plan — Quick Update
 
+**Summary.** The per-screen UI spec for the mobile email composer. Component choices, string parity with the web, design tokens, and a precise reuse-versus-build inventory.
+
+**What it's about.** This document specifies how the compose screen looks and behaves. String-level parity with the web composer (verified line-by-line against `EmailForm.tsx`), the hardcoded defaults mobile v1 sends in place of web's configurable fields, the design tokens already in the app, and a two-column table of reusable versus net-new components.
+
+**Why this exists.** Without it, developers either invent inconsistent UI or reverse-engineer the web app for every string and style call. This eliminates ambiguity. Mirror web where it matters (strings, defaults). Be explicit where divergence is intentional (no scheduling, no channel toggles in v1).
+
+**What shaped it.**
+- Line-by-line inspection of `EmailForm.tsx` for strings, defaults, and field behavior.
+- The app's existing design system: Uniwind/Tailwind tokens, the `Button`, `Sheet`, `Card`, `Screen` components, the `TextInput` convention used in `dashboard.tsx` and `library-filters.tsx`.
+- The choice of `@10play/tentap-editor` (TenTap) for rich text — same Tiptap engine as web.
+- A devil-advocate review that picked the right photo-upload path: ActiveStorage direct-upload via `/mobile/direct_uploads`, not raw presigned PUT.
+- Every web field outside v1 deferred explicitly, with a reference table mapping each to its source line.
+
+---
+
 Per-story UI specification, component picks, design alignment with the existing app.
 
 ## Web↔mobile string alignment (verified from `EmailForm.tsx`)

@@ -1,5 +1,20 @@
 # Wave 8 — Mobile Email Inbox + WebView Post Viewer
 
+**Summary.** The plan for the mobile email inbox. A native list of a creator's published, draft, and scheduled emails, with per-row stats, action sheet, WebView post viewer, and soft-delete.
+
+**What it's about.** The "see what I sent" half of the mobile email feature. A new Emails tab with three sub-tabs (Published, Drafts, Scheduled), each backed by a single paginated Rails endpoint filtered by type. Tapping a row opens a bottom sheet with stats and actions: View post (in-app WebView), Duplicate (pre-fills the compose screen), Delete (soft-delete with confirmation). The WebView reuses the existing `BaseWebView` component. The doc covers the web reference files mirrored, the architecture decision to collapse three controller actions into one, and the full list of backend and mobile changes.
+
+**Why this exists.** The email list is the missing half of the composer loop. Without it, a creator has no way to see what they sent or verify a publish succeeded without leaving the app. This plan specs that screen in enough detail for an agent to implement it without ambiguity, and documents what's intentionally out of scope (search, pagination beyond the first page, true in-place edit, the Subscribers tab).
+
+**What shaped it.**
+- Web reference: `Published.tsx`, `Drafts.tsx`, `Scheduled.tsx`, `Layout.tsx`, and `EmailSheetActions` in the Rails Inertia frontend — verified file:line before speccing the mobile equivalent.
+- `InstallmentPresenter#props` shape: `sent_count`, `open_count`/`open_rate`, `click_count`/`click_rate`, `view_count`. Mobile list rows mirror this.
+- The decision to collapse web's three controller actions into one mobile endpoint with a `type=` filter parameter.
+- Comments are already inline on `/p/<slug>` via `PostPresenter`, so the WebView path doesn't need extra work for "comment from mobile."
+- Explicit deferrals: search, pagination, true in-place edit (Edit navigates to compose pre-filled, same as Duplicate), and the Subscribers tab.
+
+---
+
 > **Continues:** [`2026-05-02-wave-7-compose-parity.md`](./2026-05-02-wave-7-compose-parity.md) (composer parity).
 >
 > **Depends on:** Wave 7's `update` and `preview` endpoints, plus the new attachments and channel state already on each installment.

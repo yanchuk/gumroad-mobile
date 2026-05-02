@@ -1,5 +1,20 @@
 # Quick Update — Mobile Email Composer Implementation Plan v6
 
+**Summary.** The engineering execution plan for the mobile email composer. Six versioned iterations of a task-by-task build plan covering both the Rails backend and the Expo/React Native client.
+
+**What it's about.** Architecture (thin Rails wrappers around `SaveInstallmentService`, Doorkeeper + Pundit auth, TenTap rich-text editor in an Expo Router modal), the full tech stack, the agent roles used to execute the plan (Orchestrator, Developer, Verifier, Auditor), and a complete log of corrections made after each review pass. The plan spans two repos and includes a mandatory dev-client rebuild gate for native dependencies.
+
+**Why this exists.** This is the artifact an agentic coding session reads to implement the feature task by task. The scope spans two repos. Multiple review passes have caught real bugs before any code was written. Sub-agents need the work decomposed precisely enough to implement one sprint at a time without ambiguity.
+
+**What shaped it.**
+- Six successive review passes (devil-advocate, two Codex reviews, a plan review, and a post-Wave 2 grounding pass by parallel read-only verifiers) that caught and corrected 20+ concrete bugs before any code was written.
+- Key corrections discovered the hard way: URL prefix is `/mobile/` not `/api/mobile/`; factory names like `"doorkeeper/access_token"` differ from docs; `SaveInstallmentService#process` returns boolean, not a hash; `throttle_by_ip` is the codebase wrapper over Rack::Attack.
+- The harness-protocol orchestration model (sub-agents per sprint, token budget allocation, sonnet for mechanical work, opus for auditing).
+- A fork-aware git workflow (origin = applicant's fork, upstream = antiwork).
+- TenTap compatibility risk with React 19 / RN 0.83.5 / New Architecture, time-boxed at two hours with two fallback options on the page.
+
+---
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `harness-protocol:harness-protocol` to execute this plan task-by-task. The orchestrator (main session) NEVER implements features or audits its own work — it spawns Developer / Verifier / Auditor sub-agents per sprint and drives the fix loop. See "Pipeline + agent roles" section below.
 
 **Goal:** Ship a mobile email-update composer for `gumroad-mobile` (title + rich-text body + photo + audience picker) that publishes through Gumroad's existing `Installment` pipeline. Deadline Mon 2026-05-04 (hiring submission to Antiwork).

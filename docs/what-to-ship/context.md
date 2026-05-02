@@ -1,5 +1,20 @@
 # Context — what we're doing here
 
+**Summary.** The strategic brief for an Antiwork/Gumroad job application. What to build, why mobile is the target, where the supporting research lives.
+
+**What it's about.** This document is the hiring context and decision log for a design-engineer application. It covers the timeline (about three working days), the artifact required (a PR, a demo video, a cover note), the candidate's background, and the rationale for building in the mobile app repo rather than the main Rails codebase. It also maps every relevant file across three repos so a reader can orient quickly.
+
+**Why this exists.** The hiring prompt is open-ended: build something that makes the team think "we need this person." This brief explains why mobile was chosen over Rails — Sahil's stated 2026 lever — and acknowledges the risk of diverging from the repo the hiring email linked. Without this frame, the feature work in the other docs has no anchor.
+
+**What shaped it.**
+- Sahil's 2026 annual meeting remarks (70:26 timestamp) on mobile as the primary growth lever.
+- Sahil's hiring tweet reply naming the new Expo mobile app as the next major project.
+- Most applicants will target the Rails repo. Mobile is the differentiated bet.
+- Zero feature PRs in the mobile repo in the prior two weeks. Any feature PR stands out.
+- Private research notes: meeting summary, mobile landscape, competitor scan, candidate ideas.
+
+---
+
 ## The hiring goal
 
 Be one of two design engineers flown to NYC by Monday **2026-05-04** for the Antiwork stint. World Cup finals tickets included.

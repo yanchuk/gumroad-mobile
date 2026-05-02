@@ -1,5 +1,20 @@
 # Wave 7 — Mobile Email Composer Parity with Web
 
+**Summary.** The sprint plan for the parity work shipping in this PR. Brings the mobile email composer to feature parity with the web composer and adds an Emails tab to the app's bottom navigation.
+
+**What it's about.** Two sprints. Sprint 1 stabilizes the composer and adds missing settings: channel toggles, comments toggle, all settings consolidated into one sheet, a profile-sections informational banner, and an idempotency fix for stale draft restores. Sprint 2 adds the Emails tab with a published-list screen, a per-row stats sheet, and an attachments management flow. Each sprint has explicit job-to-be-done statements, backend endpoint specs, component lists, and risk notes. Sprint 3 and 4 scope is documented but moved out to the Wave 8 plan.
+
+**Why this exists.** After the initial composer was built, the gap between the mobile and web surfaces was still significant. This plan closes the most visible parts of that gap before the demo deadline. It also captures decisions made during a Codex review that identified blockers — notably the missing query invalidation on publish, which would leave the list stale after composing.
+
+**What shaped it.**
+- Codex review findings: query invalidation blocker, channel visibility rule (hide "Post to profile" when audience is not Everyone), and 17 other numbered findings.
+- The decision to use `useQuery` (not `useInfiniteQuery`) for the email list in this wave — first page only, infinite scroll deferred.
+- Backend addition of `has_profile_sections` to the audience-options response so the profile-sections banner is conditional, not hardcoded.
+- Idempotency key rotation: local draft TTL is 7 days, backend Redis TTL is 1 hour — stale draft restores need a fresh key.
+- Sprint 3 and 4 content (scheduling, save-as-draft, edit/duplicate/delete, in-app WebView) explicitly moved out of scope to the Wave 8 plan.
+
+---
+
 > **Continues:** [`2026-05-01-quick-update-mobile.md`](./2026-05-01-quick-update-mobile.md) (Waves 1-6 — composer foundation, photo upload, toolbar — all shipped).
 >
 > **Linked:** [`2026-05-02-wave-8-email-inbox.md`](./2026-05-02-wave-8-email-inbox.md) — email list/inbox + sheet + WebView post viewer (depends on this wave's `update`/`preview` endpoints).
