@@ -48,7 +48,7 @@ export const useRichTextBody = ({
   });
 
   useEffect(() => {
-    const css = `body { color: ${foreground}; background-color: ${bodyBg}; font-size: 16px; line-height: 1.5; padding: 12px; }`;
+    const css = `body { color: ${foreground}; background-color: ${bodyBg}; font-size: 16px; line-height: 1.5; padding: 12px 16px; }`;
     editor.injectCSS(css, "email-compose-theme");
   }, [editor, foreground, bodyBg]);
 
