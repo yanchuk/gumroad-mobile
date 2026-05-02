@@ -26,6 +26,12 @@ import { Alert, Pressable, TextInput, View } from "react-native";
 
 const STALE_DRAFT_MS = 60 * 60 * 1000;
 
+// TenTap emits structural HTML like "<p></p>" or "<p><br></p>" when the editor
+// is focused-but-empty. Strip tags + non-breaking whitespace before deciding
+// whether the body has visible content.
+const isHtmlEmpty = (html: string): boolean =>
+  html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").replace(/ /g, "").trim().length === 0;
+
 const channelSummary = (audienceType: AudienceType, channel: Channel) => {
   const profileVisible = audienceType === "audience" && channel.profile;
   if (channel.email && profileVisible) return "Email + Post";
@@ -68,13 +74,19 @@ export default function EmailComposeScreen() {
   useEffect(() => {
     if (initialDraftHandled.current || !draftIsLoaded) return;
     initialDraftHandled.current = true;
-    if (storedDraft) setRestoreCandidate(storedDraft);
-  }, [draftIsLoaded, storedDraft]);
+    if (storedDraft) {
+      setRestoreCandidate(storedDraft);
+    } else {
+      // No draft to restore — clear any state held over by the root-scoped
+      // ComposeProvider from a prior compose session in the same app run.
+      setAttachments([]);
+    }
+  }, [draftIsLoaded, storedDraft, setAttachments]);
 
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!draftIsLoaded) return;
-    if (!title && !html && attachments.length === 0) return;
+    if (!title && isHtmlEmpty(html) && attachments.length === 0) return;
     if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     draftSaveTimer.current = setTimeout(() => {
       saveDraft({
@@ -117,10 +129,10 @@ export default function EmailComposeScreen() {
 
   const effectiveProfile = audienceType === "audience" && channel.profile;
   const hasChannel = channel.email || effectiveProfile;
-  const canPublish = !!eligibility?.can_send_emails && title.trim().length > 0 && html.trim().length > 0 && hasChannel && !publish.isPending;
+  const canPublish = !!eligibility?.can_send_emails && title.trim().length > 0 && !isHtmlEmpty(html) && hasChannel && !publish.isPending;
 
   const handleCancelPress = useCallback(() => {
-    if (!title.trim() && !html.trim() && attachments.length === 0) {
+    if (!title.trim() && isHtmlEmpty(html) && attachments.length === 0) {
       router.dismiss();
       return;
     }
@@ -152,6 +164,7 @@ export default function EmailComposeScreen() {
           onPress: async () => {
             if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
             await clearDraft();
+            setAttachments([]);
             router.dismiss();
           },
         },
@@ -176,6 +189,7 @@ export default function EmailComposeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
       await clearDraft();
+      setAttachments([]);
       router.dismiss();
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
