@@ -27,6 +27,44 @@ Bring the mobile **New email** composer to feature parity with `gumroad.dev/emai
 
 ---
 
+## Shipped state (what actually landed in the iOS PR)
+
+The plan below was the spec. This section is the result. Read here first to know what's live, what was cut, and where to look in the code.
+
+### Shipped
+
+- **Settings sheet** — Audience radios + Channel checkboxes + Engagement Allow-comments toggle, all in one bottom sheet. Replaces the audience-only sheet.
+- **Summary chip** above the editor — `Everyone · Email + Post · Comments: ON`. Updates as the sheet dismisses.
+- **Channel rule** — "Post to profile" hides when audience is not Everyone, auto-restores to ON on switch back. Mutual-uncheck guard so both channels can never be off.
+- **Profile-sections empty-state banner** inside the Channel section. Informational, not blocking.
+- **Allow-comments toggle** (Engagement section), default ON.
+- **Stale-draft idempotency rotation** — drafts older than 1h get a fresh `idempotency_key` on resume.
+- **Server error normalization** — surfaces the backend's `{message}` field instead of the raw 4xx/5xx body.
+- **Emails tab** — new bottom-nav tab between Dashboard and Analytics, creator-gated. iOS-native top-right `+` replaces the dashboard FAB.
+- **Email list** — vanilla `FlatList` + `RefreshControl`, first page only.
+- **Detail sheet** on row tap — five stat rows (Sent timestamp, Emailed, Opened, Clicks, Views) plus a "View post" button that opens `/p/<slug>` in the system browser.
+- **Publish invalidation** — publishing invalidates the `["emails"]` query so the new row shows up immediately.
+- **Attachments management screen** — `📎 Attachments (N)` chip pushes to a separate full-screen route. Document picker accepts PDFs + images, multi-select. Soft warn at 10 MB; no hard cap.
+- **Compose context** — composer state (including the attachments list) lives in a shared provider so the route group screens stay in sync.
+- **Draft schema migration** — old drafts with a single `photoCdnUrl` upgrade silently; the inline image stays in the saved HTML.
+- **Maestro flow** extended to assert the published email lands in the Emails tab.
+
+### Cut from this PR (deferred to Wave 8)
+
+- **Save button** + server-side drafts (PATCH endpoint).
+- **Preview button** + Preview popover.
+- **Publish dropdown** with "Publish now" / Schedule / 5-second countdown.
+- **TenTap toolbar 📷** custom button (kept the existing external "Add photo" button instead — toolbar custom items need a PNG asset).
+- **Filters** (Bought / Has not yet bought / After / Before, customer-only price/country) — desktop segmentation work.
+- **Profile sections sub-toggles** when audience is Everyone + Post to profile.
+- **Infinite pagination** on the Emails list.
+
+### Reading this plan
+
+The user stories below describe the original spec. Cross-reference with the "Shipped" list above to see what's in the PR versus what's planned for Wave 8. The plan is preserved in full so the deferred work has a place to live until Wave 8 picks it up.
+
+---
+
 ## Sprint Plan (token + time budget aware)
 
 Three sprints. **Sprint 1 ships the demo cut.** Sprints 2 + 3 fill in parity and polish if time allows.
