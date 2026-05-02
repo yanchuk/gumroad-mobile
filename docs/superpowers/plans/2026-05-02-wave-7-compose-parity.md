@@ -137,16 +137,73 @@ Wave 8 absorbs everything else — see [`2026-05-02-wave-8-email-inbox.md`](./20
 - **Settings summary chip:** use `components/ui/badge.tsx` in a `flex-row`. No dedicated chip component.
 - **Maestro:** convention is `appId: ${APP_ID}` + `runFlow utils/launch.yaml` first.
 
-### Sprint 2
-- **`PaginatedInstallmentsPresenter`** returns `{ installments, pagination: { count, next }, has_posts }` (line 47). PER_PAGE=25.
-- **`Api::Mobile::EmailsController`** has NO `index` action yet — must add. Routes line 253: extend `only: [:create]` to include `:index`.
-- **Bottom tab pattern:** `app/(tabs)/_layout.tsx` `<Tabs.Screen name="..." options={{ title, tabBarIcon, href }}>`.
-- **List perf:** vanilla `FlatList` is project standard (no FlashList).
-- **Pull-to-refresh:** custom scroll-offset approach in `library.tsx:125-135` (no RefreshControl).
-- **TanStack `useInfiniteQuery` pattern:** `components/library/use-purchases.ts` — query key `["purchases", filters]`, `getNextPageParam: lastPage.meta.pagination.next ?? undefined`.
-- **Detail sheet:** copy `components/email-compose/audience-sheet.tsx` shape.
-- **"View post":** use `safeOpenURL(url)` from `lib/open-url.ts` (already wraps `Linking.openURL`).
-- **GAP:** no mobile `formatStatNumber` utility. Need a one-liner in `lib/format-stat.ts`.
+### Sprint 2 (re-verified pre-implementation, 6 sonnet agents)
+
+**S2.1 Published list**
+- **`PaginatedInstallmentsPresenter`** at `app/presenters/paginated_installments_presenter.rb:4,6,18-49` — shape `{ installments, pagination: { count, next }, has_posts }`. PER_PAGE=25 (line 6). Pre-existing typo `pagiation_metadata` (line 24/41) — don't rely on the variable name in any new code.
+- **`InstallmentPresenter#props`** at `installment_presenter.rb:17-78` returns row fields incl. `name`, `published_at`, `external_id`, `sent_count`, `click_count`, `open_count`, `view_count`, `click_rate`, `open_rate`, `send_emails`, `shown_on_profile`, `installment_type`, `display_type`, `full_url`, `has_been_blasted`, `shown_in_profile_sections`. **No backend presenter changes needed for list/detail fields.**
+- **`Api::Mobile::EmailsController`** at `emails_controller.rb:3-11` — only `audience_options` + `create`. Route at `config/routes.rb:253` is `only: [:create]`. Must add `:index` to `only:` list.
+- **Pundit gate:** existing `create` uses `authorize Installment, :create?` (line 46-49). For `index`, an **`index?` policy method must be added to `InstallmentPolicy`** (does not exist today) — sonnet flagged this; it's simpler to use `authorize_creator!` (a higher-level helper) instead and skip the Pundit-resource policy entirely. **Decision:** use `authorize_creator!` like the planned Sprint 1 backend pattern.
+- **Tab pattern:** `app/(tabs)/_layout.tsx:216-244` — `<Tabs.Screen name="..." options={{ title, tabBarIcon, href, headerLeft, headerRight }} />`. `href: isCreator ? undefined : null` is the creator-gate idiom. **New tab order:** Dashboard → **Emails** → Analytics → Library. Emails is creator-only (same `isCreator` gate as Dashboard/Analytics).
+- **`DashboardFAB` removal:** `app/(tabs)/dashboard.tsx:153` renders `<DashboardFAB />` as the last child of `<Screen>`. Drop that line + import on line 2. Component file stays for now (referenced in Wave 8 plan if we re-introduce a contextual FAB elsewhere).
+- **Top-right "+" on Emails tab:** use `headerRight: () => <Pressable onPress={() => router.push("/email-compose")}>...</Pressable>` JSX in `Tabs.Screen options` — same pattern as `DashboardHeaderRight` at `_layout.tsx:172-177`.
+- **List perf:** vanilla `FlatList` is project standard (`dashboard.tsx:14`, `library.tsx:20`). No FlashList.
+- **Pull-to-refresh:** **two patterns exist** in the project — Dashboard uses `<RefreshControl>` (`dashboard.tsx:138-142`), Library uses a manual scroll-offset trigger (`library.tsx:124-135`). **Decision:** use `<RefreshControl>` for `emails.tsx` — simpler, iOS-native default.
+
+**S2.2 Stats sheet**
+- **5 stat rows** (web: `app/javascript/pages/Emails/Published.tsx:62-176`):
+  - Section header: **"Sent"** displays the *timestamp* (not a count). Don't confuse with the recipient count row.
+  - Row labels: **"Emailed"** (sent_count), **"Opened"** (open_count + open_rate%), **"Clicks"** (click_count + click_rate%), **"Views"** (view_count).
+- **Two placeholder values, distinct semantics:**
+  - **`"--"`** — when a stat is genuinely null (e.g., `view_count === null` per `formatStatNumber` at `app/javascript/utils/formatStatNumber.ts:4`).
+  - **`"n/a"`** — when `send_emails: false` for the Emailed/Opened/Clicks rows (those metrics don't apply).
+- **Plan correction:** the previous draft said "Label always 'Sent'" — that's wrong. "Sent" is the timestamp section header; the recipient-count row label is **"Emailed"**.
+- **`full_url`** at `installment_presenter.rb:66`: built via `view_post_path` → `/:username/p/:slug` (route at `config/routes.rb:1070`). Already in the JSON. Add to mobile `EmailRow` type.
+- **GAP:** no mobile `formatStatNumber` utility. Add `lib/format-stat.ts` (one-liner mirroring web's behavior — null → `"--"`, value → `value.toLocaleString()`).
+
+**S2.3 View post**
+- `safeOpenURL` at `lib/open-url.ts:13-28` — wraps `Linking.openURL` with `canOpenURL` guard + `Alert` fallback. No Sentry instrumentation today; not a blocker but worth tracking as a Wave 8 instrumentation task.
+- Wave 8 in-app authed WebView pattern: `app/purchase/[token].tsx:71` appends `?access_token=...&mobile_token=...` to the WebView URL. **Use this same pattern** when Wave 8 replaces system-browser fallback.
+
+**S2.4 First-page only useQuery**
+- **TanStack:** `@tanstack/react-query@^5.90.16`. `useQuery`, `useMutation`, `useInfiniteQuery`, `useQueryClient`, `keepPreviousData` all imported in project (`lib/request.ts:2`, `components/library/use-purchases.ts:4`).
+- **`useAPIRequest`** at `lib/request.ts:88-104` returns full `UseQueryResult` — supports custom `queryKey` array via `Omit<UseQueryOptions...> & { url: string }`. Use it directly for `useEmailsList`.
+- **`useEmailsList`** is a NEW file — no existing skeleton. Mirror `use-purchases.ts` shape but use `useQuery` (not `useInfiniteQuery`) per locked decision.
+
+**S2.5 Query invalidation on publish**
+- `queryClient` instantiated at `lib/query-client.tsx:13` (5min staleTime).
+- **First `useMutation.onSuccess` invalidation in this project.** Existing pattern: `components/dashboard/refund-form.tsx:91-92` invalidates inside an async handler (NOT inside `useMutation.onSuccess`). For Sprint 2, wire `usePublishEmail` like:
+  ```ts
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ...,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["emails"] }),
+  });
+  ```
+  v5 object-form `invalidateQueries({ queryKey })` — verified in `refund-form.tsx`.
+- `usePublishEmail` at `components/email-compose/use-publish-email.ts:33-52` has zero callbacks today — adding `onSuccess` is purely additive.
+
+**S2.6 Attachments management screen**
+- **`expo-document-picker`** is **NOT installed** today. Run `npx expo install expo-document-picker` before implementation.
+- **TenTap `ImageBridge`** is **already in `TenTapStartKit`** (verified at `node_modules/@10play/tentap-editor/src/bridges/StarterKit.ts:17,32`). `editor.setImage(src)` works directly. No bridge wiring needed; just add a custom toolbar button.
+- **TenTap toolbar customization:** `Toolbar` accepts `items?: ToolbarItem[]`. `ToolbarItem` shape: `{ onPress, active, disabled, image }` (`actions.ts:31`). Add a 📷 entry that triggers `expo-image-picker` and calls `editor.setImage(url)`.
+- **`use-photo-upload.ts`** input today is `ImagePicker.ImagePickerAsset` (`use-photo-upload.ts:35`). Generalize to a common `{ uri, fileName?, fileSize?, mimeType?, name? }` shape compatible with both `ImagePicker.ImagePickerAsset` and `DocumentPicker.DocumentPickerAsset`. Rename to `use-file-upload.ts`.
+- **3-step upload flow** (verified): step 1 POST `mobile/direct_uploads` with `{ blob: { filename, byte_size, checksum, content_type } }`; step 2 PUT to S3 presigned URL; step 3 GET `mobile/s3_utility/cdn_url_for_blob?key=...`. Backend `direct_uploads_controller.rb:23-24` permits any `content_type` — no MIME whitelist server-side.
+- **Route group:** `app/(compose)/_layout.tsx` does **NOT exist** today. Must be created. Move `email-compose` from root `Stack` into a new `(compose)` group; add `email-attachments.tsx` as a sibling. The group's `_layout.tsx` defines its own nested `Stack` and a Context provider scoping composer state.
+- **Composer presentation:** `app/_layout.tsx:76` uses `presentation: "modal"` (NOT `"fullScreenModal"` — earlier draft of plan said `"fullScreenModal"`; correction). Modals are themselves a navigation stack, so a screen pushed from `email-compose` works.
+- **`UploadedFile` type** (proposed):
+  ```ts
+  type UploadedFile = {
+    localUri: string;       // for retry on failure
+    filename: string;
+    byteSize: number;
+    mimeType: string;
+    signedId: string;       // ActiveStorage attach key for publish
+    cdnUrl: string;         // for draft persistence + inline preview
+    position: number;       // append order
+  };
+  ```
+- **Draft schema migration:** today's `Draft.photoCdnUrl?: string` becomes `Draft.attachments?: UploadedFile[]`. Same `email-compose-draft-v1` AsyncStorage key — additive optional field, drop the old `photoCdnUrl` field on read (leave behind a `// migrated from photoCdnUrl in Wave 7 Sprint 2` one-liner or just ignore).
 
 ### Sprint 3
 - **Schedule backend:** `SaveInstallmentService` already handles `params[:to_be_published_at]` (line 31, lines 79-93 — creates `installment_rule`, enqueues `PublishScheduledPostJob`).
