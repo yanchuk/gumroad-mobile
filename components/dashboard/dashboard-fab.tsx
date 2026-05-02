@@ -18,6 +18,7 @@ export const DashboardFAB = () => {
       }}
       accessibilityRole="button"
       accessibilityLabel="Compose new email"
+      testID="dashboard-compose-fab"
       className="absolute bottom-24 right-4 h-14 w-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-black/20"
     >
       <LineIcon name="plus" size={28} className="text-accent-foreground" />
