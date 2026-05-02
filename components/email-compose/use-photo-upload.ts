@@ -16,12 +16,12 @@ type DirectUploadResponse = {
 
 type CdnUrlResponse = { url: string };
 
-const md5BufferBase64 = async (buffer: ArrayBuffer): Promise<string> => {
+const md5BytesBase64 = async (bytes: Uint8Array): Promise<string> => {
   const Crypto = await import("expo-crypto");
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, buffer);
-  const bytes = new Uint8Array(digest);
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, new Uint8Array(bytes));
+  const out = new Uint8Array(digest);
   let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
+  for (let i = 0; i < out.length; i++) binary += String.fromCharCode(out[i]!);
   return globalThis.btoa(binary);
 };
 
@@ -40,43 +40,57 @@ export const usePhotoUpload = () => {
         setStatus("uploading_blob");
 
         const { File } = await import("expo-file-system");
-        const fileRef = new File(asset.uri);
-        const buffer = await fileRef.arrayBuffer();
+        const file = new File(asset.uri);
+        const bytes = await file.bytes();
+        if (isStale()) return null;
+        const blob = await fetch(asset.uri).then((r) => r.blob());
         if (isStale()) return null;
         const filename = asset.fileName ?? `photo-${Date.now()}.jpg`;
-        const byteSize = asset.fileSize ?? buffer.byteLength;
-        const checksum = await md5BufferBase64(buffer);
+        const byteSize = asset.fileSize ?? bytes.byteLength;
+        const checksum = await md5BytesBase64(bytes);
         if (isStale()) return null;
-        const contentType = asset.mimeType ?? "image/jpeg";
+        const contentType = asset.mimeType ?? blob.type ?? "image/jpeg";
 
+        console.info("[photo] step 1: POST /mobile/direct_uploads", { filename, byteSize, contentType });
         const blobResponse = await requestAPI<DirectUploadResponse>("mobile/direct_uploads", {
           method: "POST",
           accessToken,
           data: { blob: { filename, byte_size: byteSize, checksum, content_type: contentType } },
         });
         if (isStale()) return null;
+        console.info("[photo] step 1 ok", { key: blobResponse.key, signed_id_present: !!blobResponse.signed_id });
 
         setStatus("uploading_s3");
-        const s3Response = await fetch(blobResponse.direct_upload.url, {
+        const s3Url = blobResponse.direct_upload.url;
+        const s3Host = (() => { try { return new URL(s3Url).host; } catch { return "<invalid-url>"; } })();
+        console.info("[photo] step 2: PUT", s3Host, { headers: Object.keys(blobResponse.direct_upload.headers ?? {}) });
+        const s3Response = await fetch(s3Url, {
           method: "PUT",
           headers: blobResponse.direct_upload.headers,
-          body: buffer,
+          body: blob,
         });
-        if (!s3Response.ok) throw new Error(`S3 upload failed: ${s3Response.status}`);
+        if (!s3Response.ok) {
+          const errBody = await s3Response.text().catch(() => "<no-body>");
+          throw new Error(`S3 PUT ${s3Response.status}: ${errBody.slice(0, 500)}`);
+        }
+        console.info("[photo] step 2 ok", s3Response.status);
         if (isStale()) return null;
 
         setStatus("fetching_cdn_url");
+        console.info("[photo] step 3: GET /mobile/s3_utility/cdn_url_for_blob", blobResponse.key);
         const cdnResponse = await requestAPI<CdnUrlResponse>(
           `mobile/s3_utility/cdn_url_for_blob?key=${encodeURIComponent(blobResponse.key)}`,
           { method: "GET", accessToken },
         );
         if (isStale()) return null;
+        console.info("[photo] step 3 ok", { url_host: (() => { try { return new URL(cdnResponse.url).host; } catch { return "<invalid>"; } })() });
 
         setCdnUrl(cdnResponse.url);
         setStatus("uploaded");
         return cdnResponse.url;
       } catch (error) {
         if (isStale()) return null;
+        console.error("[photo] upload failed:", error instanceof Error ? error.message : error);
         Sentry.captureException(error);
         setStatus("failed");
         return null;
